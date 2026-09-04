@@ -1,17 +1,17 @@
 # Unity
 .utmp/
-/[Ll]ibrary/
-/[Tt]emp/
-/[Oo]bj/
-/[Bb]uild/
-/[Bb]uilds/
-/[Ll]ogs/
-/[Uu]ser[Ss]ettings/
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
 *.log
 *.blend1
 *.blend1.meta
-/[Mm]emoryCaptures/
-/[Rr]ecordings/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
 .vs/
 .gradle/
 ExportedObj/
@@ -43,11 +43,17 @@ mono_crash.*
 *.app
 crashlytics-build.properties
 InitTestScene*.unity*
-/ServerData
-/[Aa]ssets/StreamingAssets/aa*
-/[Aa]ssets/AddressableAssetsData/link.xml*
-/[Aa]ssets/Addressables_Temp*
-/[Aa]ssets/AddressableAssetsData/*/*.bin*
+**/ServerData
+**/[Aa]ssets/StreamingAssets/aa*
+**/[Aa]ssets/AddressableAssetsData/link.xml*
+**/[Aa]ssets/Addressables_Temp*
+**/[Aa]ssets/AddressableAssetsData/*/*.bin*
+
+# Plastic SCM local workspace (not needed for Git)
+**/.plastic/
+
+# Unity UOS encrypt key (do not commit)
+**/UOSLauncherEncrypt/
 
 # OS / editor
 .DS_Store
