@@ -12,11 +12,13 @@ public class AuthoredTreeController : MonoBehaviour
     [SerializeField] private List<AuthoredTreeSegment> segments = new List<AuthoredTreeSegment>();
     [SerializeField] private float defaultPruneFadeDuration = 0.8f;
 
-    private BranchChoiceGate choiceGate;
+    private BranchNutrientBudget nutrientBudget;
+    private BranchRevealSequence revealSequence;
 
     private void Awake()
     {
-        choiceGate = GetComponent<BranchChoiceGate>();
+        nutrientBudget = GetComponent<BranchNutrientBudget>();
+        revealSequence = GetComponent<BranchRevealSequence>();
 
         if (collectSegmentsFromChildren)
         {
@@ -35,6 +37,38 @@ public class AuthoredTreeController : MonoBehaviour
 
     private void Update()
     {
+        TryStartWaitingSegments();
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            RestartTree();
+        }
+    }
+
+    private void TryStartWaitingSegments()
+    {
+        if (revealSequence != null && revealSequence.HasOrderedSequence)
+        {
+            while (true)
+            {
+                AuthoredTreeSegment nextSegment = revealSequence.GetNextSegmentReadyToStart();
+                if (nextSegment == null)
+                {
+                    break;
+                }
+
+                if (nutrientBudget != null && !nutrientBudget.CanStartNewBranch())
+                {
+                    break;
+                }
+
+                nextSegment.BeginReveal();
+                nutrientBudget?.RefreshSlots();
+            }
+
+            return;
+        }
+
         for (int i = 0; i < segments.Count; i++)
         {
             AuthoredTreeSegment segment = segments[i];
@@ -43,24 +77,47 @@ public class AuthoredTreeController : MonoBehaviour
                 continue;
             }
 
-            if (segment.IsTriggerSatisfied())
+            if (!segment.IsTriggerSatisfied())
             {
-                segment.BeginReveal();
+                continue;
             }
-        }
 
-        if (Input.GetKeyDown(KeyCode.R))
-        {
-            RestartTree();
+            if (nutrientBudget != null && !nutrientBudget.CanStartNewBranch())
+            {
+                continue;
+            }
+
+            segment.BeginReveal();
+            nutrientBudget?.RefreshSlots();
         }
     }
 
+    public AuthoredTreeSegment[] GetSegments()
+    {
+        return segments.ToArray();
+    }
+
+    public int RemainingBranchSlots => nutrientBudget != null ? nutrientBudget.AvailableNutrients : int.MaxValue;
+
     public void StartGrowth()
     {
-        if (trunkSegment != null)
+        if (trunkSegment == null)
         {
-            trunkSegment.BeginReveal();
+            return;
         }
+
+        if (trunkSegment.State != AuthoredTreeSegment.SegmentState.Locked)
+        {
+            return;
+        }
+
+        if (nutrientBudget != null && !nutrientBudget.CanStartNewBranch())
+        {
+            return;
+        }
+
+        trunkSegment.BeginReveal();
+        nutrientBudget?.RefreshSlots();
     }
 
     public void RestartTree()
@@ -76,12 +133,16 @@ public class AuthoredTreeController : MonoBehaviour
             segments[i].HideInstant();
         }
 
+        nutrientBudget?.ResetNutrients();
+
         if (autoStartOnPlay)
         {
             StartGrowth();
         }
-
-        choiceGate?.ResetGate();
+        else
+        {
+            nutrientBudget?.RefreshSlots();
+        }
     }
 
     public void PruneSegment(AuthoredTreeSegment segment)
@@ -91,17 +152,9 @@ public class AuthoredTreeController : MonoBehaviour
             return;
         }
 
-        if (choiceGate != null)
+        if (nutrientBudget != null && !nutrientBudget.CanPrune(segment))
         {
-            if (choiceGate.TryHandlePrune(segment))
-            {
-                return;
-            }
-
-            if (!choiceGate.CanPrune(segment))
-            {
-                return;
-            }
+            return;
         }
 
         if (!segment.CanBePruned)
@@ -110,5 +163,6 @@ public class AuthoredTreeController : MonoBehaviour
         }
 
         segment.PruneWithFade(defaultPruneFadeDuration);
+        nutrientBudget?.RefreshSlots();
     }
 }

@@ -53,6 +53,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     private float spriteRevealTop;
     private float spriteRevealCenterX;
     private float growthSpeedMultiplier = 1f;
+    private bool occupiesBranchSlot;
+    private bool wasPruned;
 
     private static readonly int RevealProgressId = Shader.PropertyToID("_RevealProgress");
     private static readonly int RevealBottomId = Shader.PropertyToID("_RevealBottom");
@@ -63,6 +65,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     public float RevealProgress => revealProgress;
     public bool CanBePruned => canBePruned && (state == SegmentState.Revealing || state == SegmentState.Complete);
     public bool IsPruning => state == SegmentState.Pruning;
+    public bool OccupiesBranchSlot => occupiesBranchSlot;
+    public bool WasPruned => wasPruned;
     public Vector3 TipWorldPosition => transform.TransformPoint(GetLocalTip());
 
     public event Action<AuthoredTreeSegment> RevealStarted;
@@ -190,7 +194,7 @@ public class AuthoredTreeSegment : MonoBehaviour
     {
         CacheVisualReferences();
         HideInstant();
-        if (startImmediatelyOnPlay)
+        if (startImmediatelyOnPlay && GetComponentInParent<AuthoredTreeController>() == null)
         {
             BeginReveal();
         }
@@ -249,6 +253,11 @@ public class AuthoredTreeSegment : MonoBehaviour
             return false;
         }
 
+        if (wasPruned || !gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
         if (startImmediatelyOnPlay)
         {
             return true;
@@ -298,7 +307,13 @@ public class AuthoredTreeSegment : MonoBehaviour
             return;
         }
 
+        if (wasPruned || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
         state = SegmentState.Revealing;
+        occupiesBranchSlot = true;
         revealProgress = 0f;
         ApplyRevealVisual();
         SetPruneColliderEnabled(true);
@@ -308,6 +323,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     public void HideInstant()
     {
         state = SegmentState.Locked;
+        occupiesBranchSlot = false;
+        wasPruned = false;
         revealProgress = 0f;
         growthSpeedMultiplier = 1f;
         if (spriteRenderer != null)
@@ -346,9 +363,16 @@ public class AuthoredTreeSegment : MonoBehaviour
 
         AuthoredTreeController controller = GetComponentInParent<AuthoredTreeController>();
         AuthoredTreeSegment[] fadeTargets = CollectPruneTargets(controller);
+        bool invokePruneCompleted = true;
         for (int i = 0; i < fadeTargets.Length; i++)
         {
-            fadeTargets[i].BeginPruneFade(fadeDuration, i == 0);
+            if (!fadeTargets[i].gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            fadeTargets[i].BeginPruneFade(fadeDuration, invokePruneCompleted);
+            invokePruneCompleted = false;
         }
     }
 
@@ -364,6 +388,11 @@ public class AuthoredTreeSegment : MonoBehaviour
         for (int i = 0; i < allSegments.Length; i++)
         {
             AuthoredTreeSegment segment = allSegments[i];
+            if (!segment.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
             if (segment == this || segment.IsDescendantOf(this))
             {
                 count++;
@@ -375,6 +404,11 @@ public class AuthoredTreeSegment : MonoBehaviour
         for (int i = 0; i < allSegments.Length; i++)
         {
             AuthoredTreeSegment segment = allSegments[i];
+            if (!segment.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
             if (segment == this || segment.IsDescendantOf(this))
             {
                 targets[index++] = segment;
@@ -386,12 +420,14 @@ public class AuthoredTreeSegment : MonoBehaviour
 
     private void BeginPruneFade(float fadeDuration, bool invokePruneCompleted)
     {
-        if (state == SegmentState.Pruning)
+        if (state == SegmentState.Pruning || !gameObject.activeInHierarchy)
         {
             return;
         }
 
         state = SegmentState.Pruning;
+        occupiesBranchSlot = false;
+        wasPruned = true;
         SetPruneColliderEnabled(false);
         StartCoroutine(PruneFadeRoutine(fadeDuration, invokePruneCompleted));
     }
