@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Small on-screen panel showing available branch nutrients for the authored tree.
+/// Small on-screen panel showing the current owned branch nutrient pool.
 /// </summary>
 public class AuthoredTreeNutrientHud : MonoBehaviour
 {
@@ -11,8 +11,6 @@ public class AuthoredTreeNutrientHud : MonoBehaviour
     [SerializeField] private float panelWidth = 220f;
 
     private int displayedAvailable;
-    private int displayedActive;
-    private int displayedMax = 8;
     private GUIStyle boxStyle;
     private GUIStyle titleStyle;
     private GUIStyle labelStyle;
@@ -53,11 +51,9 @@ public class AuthoredTreeNutrientHud : MonoBehaviour
         }
     }
 
-    private void OnSlotsChanged(int activeCount, int availableNutrients)
+    private void OnSlotsChanged(int unusedActiveCount, int availableNutrients)
     {
-        displayedActive = activeCount;
         displayedAvailable = availableNutrients;
-        displayedMax = nutrientBudget != null ? nutrientBudget.MaxConcurrentBranches : displayedMax;
     }
 
     private void RefreshDisplay()
@@ -67,9 +63,7 @@ public class AuthoredTreeNutrientHud : MonoBehaviour
             return;
         }
 
-        displayedActive = nutrientBudget.ActiveBranchCount;
         displayedAvailable = nutrientBudget.AvailableNutrients;
-        displayedMax = nutrientBudget.MaxConcurrentBranches;
     }
 
     private void OnGUI()
@@ -82,17 +76,13 @@ public class AuthoredTreeNutrientHud : MonoBehaviour
         RefreshDisplay();
         EnsureStyles();
 
-        float panelHeight = 118f;
+        float panelHeight = 78f;
         Rect panelRect = new Rect(screenOffset.x, screenOffset.y, panelWidth, panelHeight);
         GUI.Box(panelRect, GUIContent.none, boxStyle);
 
         GUILayout.BeginArea(new Rect(panelRect.x + 10f, panelRect.y + 8f, panelRect.width - 20f, panelRect.height - 16f));
         GUILayout.Label("养分", titleStyle);
-        GUILayout.Label($"可用营养：{displayedAvailable} / {displayedMax}", labelStyle);
-        GUILayout.Label($"当前树枝：{displayedActive}", labelStyle);
-        GUILayout.Space(6f);
-        DrawNutrientBar();
-        GUILayout.Space(4f);
+        GUILayout.Label($"拥有营养：{displayedAvailable}", labelStyle);
 
         if (displayedAvailable <= 0)
         {
@@ -100,35 +90,6 @@ public class AuthoredTreeNutrientHud : MonoBehaviour
         }
 
         GUILayout.EndArea();
-    }
-
-    private void DrawNutrientBar()
-    {
-        Rect barRect = GUILayoutUtility.GetRect(panelWidth - 20f, 18f);
-        int usedCount = Mathf.Clamp(displayedMax - displayedAvailable, 0, displayedMax);
-        float slotWidth = barRect.width / displayedMax;
-        float gap = 2f;
-
-        for (int i = 0; i < displayedMax; i++)
-        {
-            bool isAvailable = i >= usedCount;
-            Rect slotRect = new Rect(
-                barRect.x + i * slotWidth + gap * 0.5f,
-                barRect.y,
-                slotWidth - gap,
-                barRect.height);
-
-            Color slotColor = isAvailable ? new Color(0.35f, 0.78f, 0.42f, 0.95f) : new Color(0.35f, 0.35f, 0.35f, 0.85f);
-            DrawSolidRect(slotRect, slotColor);
-        }
-    }
-
-    private void DrawSolidRect(Rect rect, Color color)
-    {
-        Color previous = GUI.color;
-        GUI.color = color;
-        GUI.DrawTexture(rect, Texture2D.whiteTexture);
-        GUI.color = previous;
     }
 
     private void EnsureStyles()

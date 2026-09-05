@@ -21,6 +21,7 @@ public class StarProtectionSystem : MonoBehaviour
     public int MaxStarCount => MaxCollectibleStars;
 
     public event Action<int> StarCollected;
+    public event Action<StarProtectionMarker, int> StarNutrientBonusGranted;
 
     private void Awake()
     {
@@ -175,6 +176,12 @@ public class StarProtectionSystem : MonoBehaviour
         collectedStarIds.Add(starId);
         CollectedStarCount = collectedStarIds.Count;
         StarCollected?.Invoke(CollectedStarCount);
+
+        int nutrientBonus = star.NutrientBonusOnCollect;
+        if (nutrientBonus > 0)
+        {
+            StarNutrientBonusGranted?.Invoke(star, nutrientBonus);
+        }
     }
 
     private static bool IsSegmentEligibleForStarCheck(AuthoredTreeSegment segment)

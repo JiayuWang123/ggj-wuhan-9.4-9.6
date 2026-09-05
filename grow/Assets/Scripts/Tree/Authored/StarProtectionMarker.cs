@@ -9,11 +9,13 @@ using UnityEngine;
 public class StarProtectionMarker : MonoBehaviour
 {
     [SerializeField] private float activationRadius = 0.35f;
+    [SerializeField] private int nutrientBonusOnCollect = 0;
     [SerializeField] private Color gizmoColor = new Color(1f, 0.92f, 0.2f, 0.95f);
 
     private CircleCollider2D contactCollider;
 
     public float ActivationRadius => activationRadius;
+    public int NutrientBonusOnCollect => nutrientBonusOnCollect;
     public Collider2D ContactCollider
     {
         get

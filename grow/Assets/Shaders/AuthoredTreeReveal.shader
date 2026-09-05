@@ -79,10 +79,15 @@ Shader "Sprites/AuthoredTreeReveal"
                 {
                     clip(revealEdge - input.localX + 0.0001);
                 }
-                else
+                else if (_RevealDirection < 2.5)
                 {
                     revealEdge = lerp(_RevealMax, _RevealMin, _RevealProgress);
                     clip(input.localX - revealEdge + 0.0001);
+                }
+                else
+                {
+                    revealEdge = lerp(_RevealMax, _RevealMin, _RevealProgress);
+                    clip(input.localY - revealEdge + 0.0001);
                 }
 
                 fixed4 color = tex2D(_MainTex, input.uv) * input.color;

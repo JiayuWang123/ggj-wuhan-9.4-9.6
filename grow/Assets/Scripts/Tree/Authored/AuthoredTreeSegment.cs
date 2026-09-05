@@ -12,7 +12,8 @@ public class AuthoredTreeSegment : MonoBehaviour
         ScaleFromRoot,
         Fade,
         ClipFromLeft,
-        ClipFromRight
+        ClipFromRight,
+        ClipFromTop
     }
 
     public enum SegmentState
@@ -39,6 +40,7 @@ public class AuthoredTreeSegment : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float parentProgressThreshold = 0.5f;
     [SerializeField] private bool useTriggerPointDistance = true;
     [SerializeField] private float triggerDistance = 0.5f;
+    [SerializeField] private AuthoredTreeSegment requirePrunedBeforeStart;
 
     [Header("Prune")]
     [SerializeField] private bool canBePruned = true;
@@ -278,7 +280,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     {
         return revealMode == RevealMode.ClipFromBottom
             || revealMode == RevealMode.ClipFromLeft
-            || revealMode == RevealMode.ClipFromRight;
+            || revealMode == RevealMode.ClipFromRight
+            || revealMode == RevealMode.ClipFromTop;
     }
 
     private void ApplyClipRevealShaderBounds()
@@ -300,6 +303,12 @@ public class AuthoredTreeSegment : MonoBehaviour
                 revealMaterial.SetFloat(RevealDirectionId, 2f);
                 revealMaterial.SetFloat(RevealMinId, spriteRevealLeft);
                 revealMaterial.SetFloat(RevealMaxId, spriteRevealRight);
+                break;
+
+            case RevealMode.ClipFromTop:
+                revealMaterial.SetFloat(RevealDirectionId, 3f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealBottom);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealTop);
                 break;
 
             default:
@@ -340,6 +349,13 @@ public class AuthoredTreeSegment : MonoBehaviour
                         tipInRendererLocal = new Vector3(
                             Mathf.Lerp(spriteRevealRight, spriteRevealLeft, progress),
                             spriteRevealCenterY,
+                            0f);
+                        break;
+
+                    case RevealMode.ClipFromTop:
+                        tipInRendererLocal = new Vector3(
+                            spriteRevealCenterX,
+                            Mathf.Lerp(spriteRevealTop, spriteRevealBottom, progress),
                             0f);
                         break;
 
@@ -434,6 +450,24 @@ public class AuthoredTreeSegment : MonoBehaviour
             return Mathf.Clamp01(Mathf.InverseLerp(rightLocalX, leftLocalX, targetLocalX));
         }
 
+        if (revealMode == RevealMode.ClipFromTop)
+        {
+            Vector3 topAnchorWorld = spriteRenderer.transform.TransformPoint(
+                new Vector3(spriteRevealCenterX, spriteRevealTop, 0f));
+            Vector3 bottomAnchorWorld = spriteRenderer.transform.TransformPoint(
+                new Vector3(spriteRevealCenterX, spriteRevealBottom, 0f));
+            float topAnchorLocalY = transform.InverseTransformPoint(topAnchorWorld).y;
+            float bottomAnchorLocalY = transform.InverseTransformPoint(bottomAnchorWorld).y;
+            float pointLocalY = transform.InverseTransformPoint(worldPoint).y;
+
+            if (Mathf.Approximately(topAnchorLocalY, bottomAnchorLocalY))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(topAnchorLocalY, bottomAnchorLocalY, pointLocalY));
+        }
+
         Vector3 bottomWorld = spriteRenderer.transform.TransformPoint(
             new Vector3(spriteRevealCenterX, spriteRevealBottom, 0f));
         Vector3 topWorld = spriteRenderer.transform.TransformPoint(
@@ -458,6 +492,11 @@ public class AuthoredTreeSegment : MonoBehaviour
         }
 
         if (wasPruned || !gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (requirePrunedBeforeStart != null && !requirePrunedBeforeStart.WasPruned)
         {
             return false;
         }
@@ -695,6 +734,7 @@ public class AuthoredTreeSegment : MonoBehaviour
             case RevealMode.ClipFromBottom:
             case RevealMode.ClipFromLeft:
             case RevealMode.ClipFromRight:
+            case RevealMode.ClipFromTop:
                 if (Application.isPlaying)
                 {
                     EnsureRevealMaterial();
@@ -772,6 +812,12 @@ public class AuthoredTreeSegment : MonoBehaviour
                 {
                     float revealFrontX = Mathf.Lerp(spriteRevealRight, spriteRevealLeft, revealProgress);
                     return rendererLocal.x >= revealFrontX - 0.02f;
+                }
+
+                case RevealMode.ClipFromTop:
+                {
+                    float revealFrontY = Mathf.Lerp(spriteRevealTop, spriteRevealBottom, revealProgress);
+                    return rendererLocal.y >= revealFrontY - 0.02f;
                 }
 
                 default:

@@ -65,7 +65,7 @@ public class AuthoredTreeController : MonoBehaviour
                 }
 
                 nextSegment.BeginReveal();
-                nutrientBudget?.RefreshSlots();
+                nutrientBudget?.TryConsumeNutrient();
             }
 
             return;
@@ -90,7 +90,7 @@ public class AuthoredTreeController : MonoBehaviour
             }
 
             segment.BeginReveal();
-            nutrientBudget?.RefreshSlots();
+            nutrientBudget?.TryConsumeNutrient();
         }
     }
 
@@ -119,7 +119,7 @@ public class AuthoredTreeController : MonoBehaviour
         }
 
         trunkSegment.BeginReveal();
-        nutrientBudget?.RefreshSlots();
+        nutrientBudget?.TryConsumeNutrient();
     }
 
     public void RestartTree()
@@ -165,7 +165,7 @@ public class AuthoredTreeController : MonoBehaviour
             return;
         }
 
+        nutrientBudget?.RefundPrunedSubtree(segment);
         segment.PruneWithFade(defaultPruneFadeDuration);
-        nutrientBudget?.RefreshSlots();
     }
 }

@@ -1,25 +1,24 @@
 using System;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// <summary>
-/// Tracks available nutrients for starting new branches. Each trigger consumes 1;
-/// pruning restores nutrients based on how many branch slots were freed.
+/// Pool-based branch nutrients. Starting a branch spends 1; pruning refunds the
+/// pruned segment plus every descendant in its subtree. Stars can grant extra nutrients.
 /// </summary>
 public class BranchNutrientBudget : MonoBehaviour
 {
     [SerializeField] private AuthoredTreeController tree;
-    [SerializeField] private int maxConcurrentBranches = 8;
+    [FormerlySerializedAs("maxConcurrentBranches")]
+    [SerializeField] private int startingNutrients = 5;
     [SerializeField] private StarProtectionSystem starProtection;
-    [SerializeField] private int maxIncreaseOnFirstStar = 0;
 
-    private int baselineMaxConcurrentBranches;
-    private bool firstStarBonusApplied;
+    private int baselineStartingNutrients;
+    private int availableNutrients;
 
-    public int MaxConcurrentBranches => maxConcurrentBranches;
-    public int ActiveBranchCount => CountActiveBranches();
-    public int AvailableNutrients => Mathf.Max(0, maxConcurrentBranches - ActiveBranchCount);
-    public int RemainingSlots => AvailableNutrients;
-    public bool HasAvailableSlot => AvailableNutrients > 0;
+    public int AvailableNutrients => availableNutrients;
+    public int RemainingSlots => availableNutrients;
+    public bool HasAvailableSlot => availableNutrients > 0;
 
     public event Action<int, int> SlotsChanged;
 
@@ -35,14 +34,15 @@ public class BranchNutrientBudget : MonoBehaviour
             starProtection = GetComponent<StarProtectionSystem>();
         }
 
-        baselineMaxConcurrentBranches = maxConcurrentBranches;
+        baselineStartingNutrients = startingNutrients;
+        availableNutrients = startingNutrients;
     }
 
     private void OnEnable()
     {
-        if (starProtection != null && maxIncreaseOnFirstStar > 0)
+        if (starProtection != null)
         {
-            starProtection.StarCollected += OnStarCollected;
+            starProtection.StarNutrientBonusGranted += OnStarNutrientBonusGranted;
         }
     }
 
@@ -50,20 +50,32 @@ public class BranchNutrientBudget : MonoBehaviour
     {
         if (starProtection != null)
         {
-            starProtection.StarCollected -= OnStarCollected;
+            starProtection.StarNutrientBonusGranted -= OnStarNutrientBonusGranted;
         }
     }
 
     public void ResetNutrients()
     {
-        maxConcurrentBranches = baselineMaxConcurrentBranches;
-        firstStarBonusApplied = false;
+        startingNutrients = baselineStartingNutrients;
+        availableNutrients = startingNutrients;
         RaiseSlotsChanged();
     }
 
     public bool CanStartNewBranch()
     {
-        return AvailableNutrients > 0;
+        return availableNutrients > 0;
+    }
+
+    public bool TryConsumeNutrient()
+    {
+        if (availableNutrients <= 0)
+        {
+            return false;
+        }
+
+        availableNutrients--;
+        RaiseSlotsChanged();
+        return true;
     }
 
     public bool CanPrune(AuthoredTreeSegment segment)
@@ -71,24 +83,49 @@ public class BranchNutrientBudget : MonoBehaviour
         return segment != null && segment.CanBePruned;
     }
 
+    public void RefundPrunedSubtree(AuthoredTreeSegment root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        int refundAmount = CountSubtreeSegments(root);
+        if (refundAmount <= 0)
+        {
+            return;
+        }
+
+        availableNutrients += refundAmount;
+        RaiseSlotsChanged();
+    }
+
     public void RefreshSlots()
     {
         RaiseSlotsChanged();
     }
 
-    public int CountActiveBranches()
+    public int CountSubtreeSegments(AuthoredTreeSegment root)
     {
-        if (tree == null)
+        if (root == null || !root.gameObject.activeInHierarchy)
         {
             return 0;
         }
 
-        AuthoredTreeSegment[] segments = tree.GetSegments();
+        AuthoredTreeSegment[] segments = tree != null
+            ? tree.GetSegments()
+            : root.GetComponentsInChildren<AuthoredTreeSegment>(true);
+
         int count = 0;
         for (int i = 0; i < segments.Length; i++)
         {
             AuthoredTreeSegment segment = segments[i];
-            if (segment != null && segment.OccupiesBranchSlot)
+            if (segment == null || !segment.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (segment == root || segment.IsDescendantOf(root))
             {
                 count++;
             }
@@ -97,20 +134,19 @@ public class BranchNutrientBudget : MonoBehaviour
         return count;
     }
 
-    private void OnStarCollected(int collectedCount)
+    private void OnStarNutrientBonusGranted(StarProtectionMarker star, int bonusAmount)
     {
-        if (firstStarBonusApplied || maxIncreaseOnFirstStar <= 0 || collectedCount < 1)
+        if (bonusAmount <= 0)
         {
             return;
         }
 
-        firstStarBonusApplied = true;
-        maxConcurrentBranches = baselineMaxConcurrentBranches + maxIncreaseOnFirstStar;
-        RefreshSlots();
+        availableNutrients += bonusAmount;
+        RaiseSlotsChanged();
     }
 
     private void RaiseSlotsChanged()
     {
-        SlotsChanged?.Invoke(ActiveBranchCount, AvailableNutrients);
+        SlotsChanged?.Invoke(0, availableNutrients);
     }
 }
