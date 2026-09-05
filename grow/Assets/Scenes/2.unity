@@ -153,7 +153,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 3
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1816198895}
@@ -566,7 +566,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1378753058}
@@ -881,7 +881,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 794832770}
@@ -1329,8 +1329,8 @@ Transform:
   m_GameObject: {fileID: 888000001}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.29, z: 0}
-  m_LocalScale: {x: 2.2413523, y: 1.9909022, z: 1}
+  m_LocalPosition: {x: 0.0176, y: 1.1004, z: 0}
+  m_LocalScale: {x: 0.7000584, y: 0.7248111, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -1376,7 +1376,7 @@ SpriteRenderer:
   m_SortingLayerID: 1234567891
   m_SortingLayer: -1
   m_SortingOrder: 0
-  m_Sprite: {fileID: 21300000, guid: f8a2b3c4d5e6478990abcdef12345678, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 0f33d25382082924d9af65b862e6c406, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1435,7 +1435,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 3
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1729422866}
@@ -1557,7 +1557,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 163276400}
@@ -1761,7 +1761,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1828191538}
@@ -1968,7 +1968,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1221788349}
@@ -2444,12 +2444,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 2044139838}
   revealTarget: {fileID: 2044139837}
-  localTip: {x: 1.6357726, y: -2.2780018}
+  localTip: {x: 2.1849756, y: -0.6718368}
   parentSegment: {fileID: 1222936760}
   startImmediatelyOnPlay: 0
   trigger: {fileID: 353543332}
@@ -2708,7 +2708,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 3
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 826441192}
@@ -3046,7 +3046,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1048188067}
@@ -3334,7 +3334,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 3
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1277716719}
@@ -3546,7 +3546,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 0
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1353877049}
@@ -3721,7 +3721,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 3
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 1718269678}
@@ -3842,7 +3842,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   revealMode: 4
-  revealDuration: 5
+  revealDuration: 3
   useAlphaTightRevealBounds: 1
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 683154867}
@@ -4182,7 +4182,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a7b8c9d0e1f2438596a7b8c9d0e1f250, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4264,8 +4264,8 @@ Transform:
   m_GameObject: {fileID: 3000000011}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.208, y: 0.501, z: 0}
-  m_LocalScale: {x: 0.12446, y: 0.111755, z: 1}
+  m_LocalPosition: {x: 1.2453, y: 0.4886, z: 0}
+  m_LocalScale: {x: 0.109537244, y: 0.1167281, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1707013215}
@@ -4311,7 +4311,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a7b8c9d0e1f2438596a7b8c9d0e1f250, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4396,7 +4396,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a7b8c9d0e1f2438596a7b8c9d0e1f250, type: 3}
+  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4441,7 +4441,7 @@ CircleCollider2D:
   m_UsedByComposite: 0
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
-  m_Radius: 1.606942
+  m_Radius: 1.7133836
 --- !u!58 &3000000014
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -4477,6 +4477,52 @@ CircleCollider2D:
   m_Offset: {x: 0, y: 0}
   serializedVersion: 2
   m_Radius: 1.5754856
+--- !u!1 &9900000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9900000002}
+  - component: {fileID: 9900000003}
+  m_Layer: 0
+  m_Name: CursorManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9900000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9900000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9900000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9900000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4944057a55860f641895ad56ba8367dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  customCursorTexture: {fileID: 2800000, guid: e4f8a2b16c3d47f9a0e1b2c3d4e5f601, type: 3}
+  hotSpot: {x: 12, y: 10}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -4485,3 +4531,4 @@ SceneRoots:
   - {fileID: 519420032}
   - {fileID: 1707013215}
   - {fileID: 310772978}
+  - {fileID: 9900000002}

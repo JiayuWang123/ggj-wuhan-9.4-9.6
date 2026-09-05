@@ -10,7 +10,8 @@ public class CursorManager : MonoBehaviour
 
     private void Start()
     {
-        // 游戏启动时，默认设置一次自定义鼠标贴图
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
         SetCustomCursor();
     }
 
