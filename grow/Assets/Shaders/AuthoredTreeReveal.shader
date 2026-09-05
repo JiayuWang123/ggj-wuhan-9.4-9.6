@@ -5,8 +5,9 @@ Shader "Sprites/AuthoredTreeReveal"
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
         _Color ("Tint", Color) = (1, 1, 1, 1)
         _RevealProgress ("Reveal Progress", Range(0, 1)) = 0
-        _RevealBottom ("Reveal Bottom (local Y)", Float) = 0
-        _RevealTop ("Reveal Top (local Y)", Float) = 1
+        _RevealMin ("Reveal Min", Float) = 0
+        _RevealMax ("Reveal Max", Float) = 1
+        _RevealDirection ("Reveal Direction", Float) = 0
     }
 
     SubShader
@@ -44,14 +45,16 @@ Shader "Sprites/AuthoredTreeReveal"
                 float4 vertex : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 fixed4 color : COLOR;
-                float localY : TEXCOORD1;
+                float localX : TEXCOORD1;
+                float localY : TEXCOORD2;
             };
 
             sampler2D _MainTex;
             fixed4 _Color;
             float _RevealProgress;
-            float _RevealBottom;
-            float _RevealTop;
+            float _RevealMin;
+            float _RevealMax;
+            float _RevealDirection;
 
             v2f vert(appdata input)
             {
@@ -59,14 +62,28 @@ Shader "Sprites/AuthoredTreeReveal"
                 output.vertex = UnityObjectToClipPos(input.vertex);
                 output.uv = input.uv;
                 output.color = input.color * _Color;
+                output.localX = input.vertex.x;
                 output.localY = input.vertex.y;
                 return output;
             }
 
             fixed4 frag(v2f input) : SV_Target
             {
-                float revealY = lerp(_RevealBottom, _RevealTop, _RevealProgress);
-                clip(revealY - input.localY + 0.0001h);
+                float revealEdge = lerp(_RevealMin, _RevealMax, _RevealProgress);
+
+                if (_RevealDirection < 0.5)
+                {
+                    clip(revealEdge - input.localY + 0.0001);
+                }
+                else if (_RevealDirection < 1.5)
+                {
+                    clip(revealEdge - input.localX + 0.0001);
+                }
+                else
+                {
+                    revealEdge = lerp(_RevealMax, _RevealMin, _RevealProgress);
+                    clip(input.localX - revealEdge + 0.0001);
+                }
 
                 fixed4 color = tex2D(_MainTex, input.uv) * input.color;
                 color.rgb *= color.a;

@@ -9,6 +9,11 @@ public class BranchNutrientBudget : MonoBehaviour
 {
     [SerializeField] private AuthoredTreeController tree;
     [SerializeField] private int maxConcurrentBranches = 8;
+    [SerializeField] private StarProtectionSystem starProtection;
+    [SerializeField] private int maxIncreaseOnFirstStar = 0;
+
+    private int baselineMaxConcurrentBranches;
+    private bool firstStarBonusApplied;
 
     public int MaxConcurrentBranches => maxConcurrentBranches;
     public int ActiveBranchCount => CountActiveBranches();
@@ -24,10 +29,35 @@ public class BranchNutrientBudget : MonoBehaviour
         {
             tree = GetComponent<AuthoredTreeController>();
         }
+
+        if (starProtection == null)
+        {
+            starProtection = GetComponent<StarProtectionSystem>();
+        }
+
+        baselineMaxConcurrentBranches = maxConcurrentBranches;
+    }
+
+    private void OnEnable()
+    {
+        if (starProtection != null && maxIncreaseOnFirstStar > 0)
+        {
+            starProtection.StarCollected += OnStarCollected;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (starProtection != null)
+        {
+            starProtection.StarCollected -= OnStarCollected;
+        }
     }
 
     public void ResetNutrients()
     {
+        maxConcurrentBranches = baselineMaxConcurrentBranches;
+        firstStarBonusApplied = false;
         RaiseSlotsChanged();
     }
 
@@ -65,6 +95,18 @@ public class BranchNutrientBudget : MonoBehaviour
         }
 
         return count;
+    }
+
+    private void OnStarCollected(int collectedCount)
+    {
+        if (firstStarBonusApplied || maxIncreaseOnFirstStar <= 0 || collectedCount < 1)
+        {
+            return;
+        }
+
+        firstStarBonusApplied = true;
+        maxConcurrentBranches = baselineMaxConcurrentBranches + maxIncreaseOnFirstStar;
+        RefreshSlots();
     }
 
     private void RaiseSlotsChanged()

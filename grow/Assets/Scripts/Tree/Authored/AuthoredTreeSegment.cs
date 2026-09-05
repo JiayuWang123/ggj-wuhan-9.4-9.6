@@ -10,7 +10,9 @@ public class AuthoredTreeSegment : MonoBehaviour
     {
         ClipFromBottom,
         ScaleFromRoot,
-        Fade
+        Fade,
+        ClipFromLeft,
+        ClipFromRight
     }
 
     public enum SegmentState
@@ -51,7 +53,10 @@ public class AuthoredTreeSegment : MonoBehaviour
     private Material revealMaterial;
     private float spriteRevealBottom;
     private float spriteRevealTop;
+    private float spriteRevealLeft;
+    private float spriteRevealRight;
     private float spriteRevealCenterX;
+    private float spriteRevealCenterY;
     private float growthSpeedMultiplier = 1f;
     private bool occupiesBranchSlot;
     private bool wasPruned;
@@ -59,8 +64,9 @@ public class AuthoredTreeSegment : MonoBehaviour
     private bool defaultCanBePruned = true;
 
     private static readonly int RevealProgressId = Shader.PropertyToID("_RevealProgress");
-    private static readonly int RevealBottomId = Shader.PropertyToID("_RevealBottom");
-    private static readonly int RevealTopId = Shader.PropertyToID("_RevealTop");
+    private static readonly int RevealMinId = Shader.PropertyToID("_RevealMin");
+    private static readonly int RevealMaxId = Shader.PropertyToID("_RevealMax");
+    private static readonly int RevealDirectionId = Shader.PropertyToID("_RevealDirection");
 
     public AuthoredTreeSegment ParentSegment => parentSegment;
     public TreeRevealTrigger BranchTrigger => trigger;
@@ -149,6 +155,12 @@ public class AuthoredTreeSegment : MonoBehaviour
     {
         defaultCanBePruned = canBePruned;
         CacheVisualReferences();
+
+        if (Application.isPlaying && UsesClipReveal() && !startImmediatelyOnPlay)
+        {
+            EnsureRevealMaterial();
+            ApplyRevealVisual();
+        }
     }
 
     private void OnValidate()
@@ -198,7 +210,10 @@ public class AuthoredTreeSegment : MonoBehaviour
             spriteHalfHeight = sprite.bounds.extents.y;
             spriteRevealBottom = sprite.bounds.min.y;
             spriteRevealTop = sprite.bounds.max.y;
+            spriteRevealLeft = sprite.bounds.min.x;
+            spriteRevealRight = sprite.bounds.max.x;
             spriteRevealCenterX = sprite.bounds.center.x;
+            spriteRevealCenterY = sprite.bounds.center.y;
 
             float normalizedPivotY = sprite.pivot.y / sprite.rect.height;
             useBottomAnchoredReveal = revealTarget != transform
@@ -214,7 +229,7 @@ public class AuthoredTreeSegment : MonoBehaviour
 
     private void EnsureRevealMaterial()
     {
-        if (!Application.isPlaying || revealMode != RevealMode.ClipFromBottom || spriteRenderer == null)
+        if (!Application.isPlaying || !UsesClipReveal() || spriteRenderer == null)
         {
             return;
         }
@@ -234,8 +249,43 @@ public class AuthoredTreeSegment : MonoBehaviour
             spriteRenderer.material = revealMaterial;
         }
 
-        revealMaterial.SetFloat(RevealBottomId, spriteRevealBottom);
-        revealMaterial.SetFloat(RevealTopId, spriteRevealTop);
+        ApplyClipRevealShaderBounds();
+    }
+
+    private bool UsesClipReveal()
+    {
+        return revealMode == RevealMode.ClipFromBottom
+            || revealMode == RevealMode.ClipFromLeft
+            || revealMode == RevealMode.ClipFromRight;
+    }
+
+    private void ApplyClipRevealShaderBounds()
+    {
+        if (revealMaterial == null)
+        {
+            return;
+        }
+
+        switch (revealMode)
+        {
+            case RevealMode.ClipFromLeft:
+                revealMaterial.SetFloat(RevealDirectionId, 1f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealLeft);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealRight);
+                break;
+
+            case RevealMode.ClipFromRight:
+                revealMaterial.SetFloat(RevealDirectionId, 2f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealLeft);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealRight);
+                break;
+
+            default:
+                revealMaterial.SetFloat(RevealDirectionId, 0f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealBottom);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealTop);
+                break;
+        }
     }
 
     private float GetRevealContactProgress()
@@ -252,10 +302,33 @@ public class AuthoredTreeSegment : MonoBehaviour
     {
         if (spriteRenderer != null && spriteRenderer.sprite != null)
         {
-            if (revealMode == RevealMode.ClipFromBottom)
+            if (UsesClipReveal())
             {
-                float tipY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, progress);
-                Vector3 tipInRendererLocal = new Vector3(spriteRevealCenterX, tipY, 0f);
+                Vector3 tipInRendererLocal;
+                switch (revealMode)
+                {
+                    case RevealMode.ClipFromLeft:
+                        tipInRendererLocal = new Vector3(
+                            Mathf.Lerp(spriteRevealLeft, spriteRevealRight, progress),
+                            spriteRevealCenterY,
+                            0f);
+                        break;
+
+                    case RevealMode.ClipFromRight:
+                        tipInRendererLocal = new Vector3(
+                            Mathf.Lerp(spriteRevealRight, spriteRevealLeft, progress),
+                            spriteRevealCenterY,
+                            0f);
+                        break;
+
+                    default:
+                        tipInRendererLocal = new Vector3(
+                            spriteRevealCenterX,
+                            Mathf.Lerp(spriteRevealBottom, spriteRevealTop, progress),
+                            0f);
+                        break;
+                }
+
                 return transform.InverseTransformPoint(spriteRenderer.transform.TransformPoint(tipInRendererLocal));
             }
 
@@ -305,6 +378,38 @@ public class AuthoredTreeSegment : MonoBehaviour
         if (spriteRenderer == null || spriteRenderer.sprite == null)
         {
             return 1f;
+        }
+
+        if (revealMode == RevealMode.ClipFromLeft)
+        {
+            Vector3 leftWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealLeft, spriteRevealCenterY, 0f));
+            Vector3 rightWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealRight, spriteRevealCenterY, 0f));
+            float leftLocalX = transform.InverseTransformPoint(leftWorld).x;
+            float rightLocalX = transform.InverseTransformPoint(rightWorld).x;
+            float targetLocalX = transform.InverseTransformPoint(worldPoint).x;
+
+            if (Mathf.Approximately(leftLocalX, rightLocalX))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(leftLocalX, rightLocalX, targetLocalX));
+        }
+
+        if (revealMode == RevealMode.ClipFromRight)
+        {
+            Vector3 leftWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealLeft, spriteRevealCenterY, 0f));
+            Vector3 rightWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealRight, spriteRevealCenterY, 0f));
+            float leftLocalX = transform.InverseTransformPoint(leftWorld).x;
+            float rightLocalX = transform.InverseTransformPoint(rightWorld).x;
+            float targetLocalX = transform.InverseTransformPoint(worldPoint).x;
+
+            if (Mathf.Approximately(leftLocalX, rightLocalX))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(rightLocalX, leftLocalX, targetLocalX));
         }
 
         Vector3 bottomWorld = spriteRenderer.transform.TransformPoint(
@@ -566,6 +671,13 @@ public class AuthoredTreeSegment : MonoBehaviour
         switch (revealMode)
         {
             case RevealMode.ClipFromBottom:
+            case RevealMode.ClipFromLeft:
+            case RevealMode.ClipFromRight:
+                if (Application.isPlaying)
+                {
+                    EnsureRevealMaterial();
+                }
+
                 if (revealMaterial != null)
                 {
                     revealMaterial.SetFloat(RevealProgressId, revealProgress);
@@ -623,11 +735,29 @@ public class AuthoredTreeSegment : MonoBehaviour
             return revealProgress > 0f;
         }
 
-        if (revealMode == RevealMode.ClipFromBottom)
+        if (UsesClipReveal())
         {
             Vector3 rendererLocal = spriteRenderer.transform.InverseTransformPoint(worldPoint);
-            float revealFrontY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, revealProgress);
-            return rendererLocal.y <= revealFrontY + 0.02f;
+            switch (revealMode)
+            {
+                case RevealMode.ClipFromLeft:
+                {
+                    float revealFrontX = Mathf.Lerp(spriteRevealLeft, spriteRevealRight, revealProgress);
+                    return rendererLocal.x <= revealFrontX + 0.02f;
+                }
+
+                case RevealMode.ClipFromRight:
+                {
+                    float revealFrontX = Mathf.Lerp(spriteRevealRight, spriteRevealLeft, revealProgress);
+                    return rendererLocal.x >= revealFrontX - 0.02f;
+                }
+
+                default:
+                {
+                    float revealFrontY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, revealProgress);
+                    return rendererLocal.y <= revealFrontY + 0.02f;
+                }
+            }
         }
 
         if (revealMode == RevealMode.ScaleFromRoot)
