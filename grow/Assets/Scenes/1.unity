@@ -1838,7 +1838,7 @@ MonoBehaviour:
   revealDuration: 8
   spriteRenderer: {fileID: 1384628344}
   revealTarget: {fileID: 1384628343}
-  localTip: {x: 0.00000012027009, y: -1.316667}
+  localTip: {x: 0.00000012027007, y: -1.316667}
   parentSegment: {fileID: 831893567}
   startImmediatelyOnPlay: 0
   trigger: {fileID: 2086825523}
