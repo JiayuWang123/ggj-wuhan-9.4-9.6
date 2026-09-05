@@ -107,6 +107,10 @@ public class AuthoredTreeSegment : MonoBehaviour
         if (pruneCollider == null)
         {
             pruneCollider = GetComponent<Collider2D>();
+            if (pruneCollider == null)
+            {
+                pruneCollider = GetComponentInChildren<Collider2D>();
+            }
         }
 
         if (revealTarget != null)
@@ -215,6 +219,29 @@ public class AuthoredTreeSegment : MonoBehaviour
         }
     }
 
+    public float GetRevealProgressForWorldPoint(Vector3 worldPoint)
+    {
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return 1f;
+        }
+
+        Vector3 bottomWorld = spriteRenderer.transform.TransformPoint(
+            new Vector3(spriteRevealCenterX, spriteRevealBottom, 0f));
+        Vector3 topWorld = spriteRenderer.transform.TransformPoint(
+            new Vector3(spriteRevealCenterX, spriteRevealTop, 0f));
+        float bottomLocalY = transform.InverseTransformPoint(bottomWorld).y;
+        float topLocalY = transform.InverseTransformPoint(topWorld).y;
+        float targetLocalY = transform.InverseTransformPoint(worldPoint).y;
+
+        if (Mathf.Approximately(bottomLocalY, topLocalY))
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(Mathf.InverseLerp(bottomLocalY, topLocalY, targetLocalY));
+    }
+
     public bool IsTriggerSatisfied()
     {
         if (state != SegmentState.Locked)
@@ -247,6 +274,11 @@ public class AuthoredTreeSegment : MonoBehaviour
 
     private bool HasParentTipReachedJunction()
     {
+        if (parentSegment.RevealProgress <= 0.001f)
+        {
+            return false;
+        }
+
         Vector3 tipLocal = parentSegment.transform.InverseTransformPoint(parentSegment.TipWorldPosition);
         Vector3 triggerLocal = parentSegment.transform.InverseTransformPoint(trigger.WorldPosition);
 
@@ -255,8 +287,8 @@ public class AuthoredTreeSegment : MonoBehaviour
             return true;
         }
 
-        // Tip has grown to or past the junction height on the parent segment.
-        return tipLocal.y >= triggerLocal.y - triggerDistance;
+        float requiredProgress = parentSegment.GetRevealProgressForWorldPoint(trigger.WorldPosition);
+        return parentSegment.RevealProgress >= requiredProgress;
     }
 
     public void BeginReveal()

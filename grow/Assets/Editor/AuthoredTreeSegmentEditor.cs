@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
@@ -11,9 +12,23 @@ public class AuthoredTreeSegmentEditor : Editor
 
         EditorGUILayout.Space();
         AuthoredTreeSegment segment = (AuthoredTreeSegment)target;
+
         if (GUILayout.Button("从此段添加子分支", GUILayout.Height(28)))
         {
             AuthoredBranchBuilder.AddChildBranch(segment);
+        }
+
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("碰撞体", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("替换为多边形碰撞 (PolygonCollider2D)"))
+        {
+            AuthoredColliderUtility.ReplaceWithPolygonCollider(segment);
+        }
+
+        if (GUILayout.Button("从 Sprite 重新生成碰撞形状"))
+        {
+            AuthoredColliderUtility.ResetPolygonFromSprite(segment);
         }
     }
 }
@@ -46,6 +61,34 @@ public static class AuthoredBranchBuilder
     {
         return Selection.activeGameObject != null
             && Selection.activeGameObject.GetComponent<AuthoredTreeSegment>() != null;
+    }
+
+    [MenuItem("Tools/GGJ/Replace Selected Segment Colliders With Polygon")]
+    private static void ReplaceSelectedColliders()
+    {
+        AuthoredTreeSegment[] segments = Selection.GetFiltered<AuthoredTreeSegment>(SelectionMode.Editable | SelectionMode.ExcludePrefab);
+        for (int i = 0; i < segments.Length; i++)
+        {
+            AuthoredColliderUtility.ReplaceWithPolygonCollider(segments[i]);
+        }
+    }
+
+    [MenuItem("Tools/GGJ/Convert Current Scene Segments To Polygon Colliders")]
+    private static void ConvertCurrentSceneColliders()
+    {
+        AuthoredTreeSegment[] segments = Object.FindObjectsByType<AuthoredTreeSegment>(
+            FindObjectsInactive.Include,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < segments.Length; i++)
+        {
+            AuthoredColliderUtility.ReplaceWithPolygonCollider(segments[i]);
+        }
+
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+            UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
+
+        Debug.Log($"Converted {segments.Length} authored segment colliders to PolygonCollider2D.");
     }
 
     public static void AddChildBranch(AuthoredTreeSegment parent, Sprite sprite = null)
@@ -102,13 +145,14 @@ public static class AuthoredBranchBuilder
         spriteRenderer.sprite = sprite;
         spriteRenderer.sortingOrder = 0;
 
-        BoxCollider2D collider = segmentGo.AddComponent<BoxCollider2D>();
-        collider.isTrigger = true;
-        FitColliderToSprite(collider, spriteRenderer);
-
-        AuthoredTreeSegment segment = segmentGo.AddComponent<AuthoredTreeSegment>();
+        AuthoredTreeSegment segment = Undo.AddComponent<AuthoredTreeSegment>(segmentGo);
+        PolygonCollider2D collider = AuthoredColliderUtility.CreatePolygonColliderOnSegment(segmentGo, spriteRenderer);
         WireSegment(segment, parent, trigger, spriteRenderer, visualGo.transform, collider);
         WireTrigger(trigger, segment);
+
+        EditorUtility.SetDirty(segmentGo);
+        EditorUtility.SetDirty(visualGo);
+        EditorUtility.SetDirty(segment);
 
         Selection.activeGameObject = segmentGo;
         EditorGUIUtility.PingObject(segmentGo);
@@ -121,7 +165,7 @@ public static class AuthoredBranchBuilder
         TreeRevealTrigger trigger,
         SpriteRenderer spriteRenderer,
         Transform revealTarget,
-        BoxCollider2D collider)
+        Collider2D collider)
     {
         SerializedObject serializedSegment = new SerializedObject(segment);
         serializedSegment.FindProperty("parentSegment").objectReferenceValue = parent;
@@ -131,14 +175,14 @@ public static class AuthoredBranchBuilder
         serializedSegment.FindProperty("revealTarget").objectReferenceValue = revealTarget;
         serializedSegment.FindProperty("pruneCollider").objectReferenceValue = collider;
         serializedSegment.FindProperty("revealMode").enumValueIndex = (int)AuthoredTreeSegment.RevealMode.ClipFromBottom;
-        serializedSegment.ApplyModifiedPropertiesWithoutUndo();
+        serializedSegment.ApplyModifiedProperties();
     }
 
     private static void WireTrigger(TreeRevealTrigger trigger, AuthoredTreeSegment ownerSegment)
     {
         SerializedObject serializedTrigger = new SerializedObject(trigger);
         serializedTrigger.FindProperty("ownerSegment").objectReferenceValue = ownerSegment;
-        serializedTrigger.ApplyModifiedPropertiesWithoutUndo();
+        serializedTrigger.ApplyModifiedProperties();
     }
 
     private static Vector3 ComputeNextJunctionLocal(AuthoredTreeSegment parent)
@@ -171,18 +215,6 @@ public static class AuthoredBranchBuilder
         return new Vector3(0f, 1f, 0f);
     }
 
-    private static void FitColliderToSprite(BoxCollider2D collider, SpriteRenderer spriteRenderer)
-    {
-        if (spriteRenderer == null || spriteRenderer.sprite == null)
-        {
-            return;
-        }
-
-        Bounds bounds = spriteRenderer.sprite.bounds;
-        collider.size = bounds.size;
-        collider.offset = bounds.center;
-    }
-
     private static Sprite LoadDefaultSprite()
     {
         Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(DefaultBranchSpritePath);
@@ -192,6 +224,208 @@ public static class AuthoredBranchBuilder
         }
 
         return sprite;
+    }
+}
+
+public static class AuthoredColliderUtility
+{
+    public static void ReplaceWithPolygonCollider(AuthoredTreeSegment segment)
+    {
+        if (segment == null)
+        {
+            return;
+        }
+
+        SpriteRenderer spriteRenderer = segment.GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer == null)
+        {
+            EditorUtility.DisplayDialog("Authored Tree", "找不到 SpriteRenderer。", "OK");
+            return;
+        }
+
+        GameObject segmentGo = segment.gameObject;
+        GameObject visualGo = spriteRenderer.gameObject;
+        RemoveBoxColliders(segmentGo, visualGo);
+        RemovePolygonColliderFromVisual(visualGo);
+
+        PolygonCollider2D polygon = CreatePolygonColliderOnSegment(segmentGo, spriteRenderer);
+        AssignPruneCollider(segment, polygon);
+        EditorUtility.SetDirty(segment);
+        EditorUtility.SetDirty(segmentGo);
+    }
+
+    public static void ResetPolygonFromSprite(AuthoredTreeSegment segment)
+    {
+        if (segment == null)
+        {
+            return;
+        }
+
+        SpriteRenderer spriteRenderer = segment.GetComponentInChildren<SpriteRenderer>();
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            EditorUtility.DisplayDialog("Authored Tree", "找不到 Sprite。", "OK");
+            return;
+        }
+
+        GameObject segmentGo = segment.gameObject;
+        PolygonCollider2D polygon = segmentGo.GetComponent<PolygonCollider2D>();
+        if (polygon == null)
+        {
+            ReplaceWithPolygonCollider(segment);
+            return;
+        }
+
+        ApplySpritePhysicsShapeToSegment(polygon, spriteRenderer);
+        polygon.isTrigger = true;
+        AssignPruneCollider(segment, polygon);
+        EditorUtility.SetDirty(segment);
+        EditorUtility.SetDirty(segmentGo);
+    }
+
+    public static PolygonCollider2D CreatePolygonColliderOnSegment(GameObject segmentGo, SpriteRenderer spriteRenderer)
+    {
+        if (segmentGo == null || spriteRenderer == null)
+        {
+            return null;
+        }
+
+        GameObject visualGo = spriteRenderer.gameObject;
+        RemoveBoxColliders(segmentGo, visualGo);
+        RemovePolygonColliderFromVisual(visualGo);
+
+        PolygonCollider2D polygon = segmentGo.GetComponent<PolygonCollider2D>();
+        if (polygon == null)
+        {
+            polygon = Undo.AddComponent<PolygonCollider2D>(segmentGo);
+        }
+
+        polygon.isTrigger = true;
+        if (spriteRenderer.sprite != null)
+        {
+            ApplySpritePhysicsShapeToSegment(polygon, spriteRenderer);
+        }
+
+        return polygon;
+    }
+
+    public static PolygonCollider2D CreatePolygonColliderOnVisual(GameObject visualGo, SpriteRenderer spriteRenderer)
+    {
+        return CreatePolygonColliderOnSegment(visualGo.transform.parent != null ? visualGo.transform.parent.gameObject : visualGo, spriteRenderer);
+    }
+
+    private static void ApplySpritePhysicsShapeToSegment(PolygonCollider2D polygon, SpriteRenderer spriteRenderer)
+    {
+        Sprite sprite = spriteRenderer.sprite;
+        Transform segmentTransform = polygon.transform;
+        Transform visualTransform = spriteRenderer.transform;
+        int shapeCount = sprite.GetPhysicsShapeCount();
+
+        if (shapeCount <= 0)
+        {
+            ApplyBoundsFallbackPolygon(polygon, sprite, visualTransform, segmentTransform);
+            return;
+        }
+
+        polygon.pathCount = shapeCount;
+        List<Vector2> path = new List<Vector2>();
+        for (int shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++)
+        {
+            path.Clear();
+            sprite.GetPhysicsShape(shapeIndex, path);
+            TransformPathToSegment(path, visualTransform, segmentTransform);
+            polygon.SetPath(shapeIndex, path);
+        }
+    }
+
+    private static void ApplyBoundsFallbackPolygon(
+        PolygonCollider2D polygon,
+        Sprite sprite,
+        Transform visualTransform,
+        Transform segmentTransform)
+    {
+        Bounds bounds = sprite.bounds;
+        Vector2 min = bounds.min;
+        Vector2 max = bounds.max;
+        List<Vector2> path = new List<Vector2>
+        {
+            min,
+            new Vector2(max.x, min.y),
+            max,
+            new Vector2(min.x, max.y)
+        };
+        TransformPathToSegment(path, visualTransform, segmentTransform);
+        polygon.pathCount = 1;
+        polygon.SetPath(0, path);
+    }
+
+    private static void TransformPathToSegment(List<Vector2> path, Transform visualTransform, Transform segmentTransform)
+    {
+        for (int i = 0; i < path.Count; i++)
+        {
+            Vector3 worldPoint = visualTransform.TransformPoint(path[i]);
+            path[i] = segmentTransform.InverseTransformPoint(worldPoint);
+        }
+    }
+
+    private static void ApplySpritePhysicsShape(PolygonCollider2D polygon, Sprite sprite)
+    {
+        int shapeCount = sprite.GetPhysicsShapeCount();
+        if (shapeCount <= 0)
+        {
+            Bounds bounds = sprite.bounds;
+            Vector2 min = bounds.min;
+            Vector2 max = bounds.max;
+            polygon.pathCount = 1;
+            polygon.SetPath(0, new Vector2[]
+            {
+                min,
+                new Vector2(max.x, min.y),
+                max,
+                new Vector2(min.x, max.y)
+            });
+            return;
+        }
+
+        polygon.pathCount = shapeCount;
+        List<Vector2> path = new List<Vector2>();
+        for (int shapeIndex = 0; shapeIndex < shapeCount; shapeIndex++)
+        {
+            path.Clear();
+            sprite.GetPhysicsShape(shapeIndex, path);
+            polygon.SetPath(shapeIndex, path);
+        }
+    }
+
+    private static void RemovePolygonColliderFromVisual(GameObject visualGo)
+    {
+        PolygonCollider2D visualPolygon = visualGo.GetComponent<PolygonCollider2D>();
+        if (visualPolygon != null)
+        {
+            Undo.DestroyObjectImmediate(visualPolygon);
+        }
+    }
+
+    private static void RemoveBoxColliders(GameObject segmentGo, GameObject visualGo)
+    {
+        BoxCollider2D segmentBox = segmentGo.GetComponent<BoxCollider2D>();
+        if (segmentBox != null)
+        {
+            Undo.DestroyObjectImmediate(segmentBox);
+        }
+
+        BoxCollider2D visualBox = visualGo.GetComponent<BoxCollider2D>();
+        if (visualBox != null)
+        {
+            Undo.DestroyObjectImmediate(visualBox);
+        }
+    }
+
+    private static void AssignPruneCollider(AuthoredTreeSegment segment, Collider2D collider)
+    {
+        SerializedObject serializedSegment = new SerializedObject(segment);
+        serializedSegment.FindProperty("pruneCollider").objectReferenceValue = collider;
+        serializedSegment.ApplyModifiedProperties();
     }
 }
 #endif

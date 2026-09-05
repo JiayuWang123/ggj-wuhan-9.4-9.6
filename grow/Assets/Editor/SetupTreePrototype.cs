@@ -4,7 +4,7 @@ using UnityEngine;
 
 public static class SetupTreePrototype
 {
-    private const string ScenePath = "Assets/Scenes/Main.unity";
+    private const string ScenePath = "Assets/Scenes/demo1.unity";
     private const string BranchPrefabPath = "Assets/Prefabs/Branch.prefab";
 
     [MenuItem("Tools/GGJ/Setup Tree Prototype")]
@@ -14,6 +14,12 @@ public static class SetupTreePrototype
         if (branchPrefab == null)
         {
             Debug.LogError($"Could not load {BranchPrefabPath}.");
+            return;
+        }
+
+        if (!System.IO.File.Exists(ScenePath))
+        {
+            Debug.LogError($"Scene not found: {ScenePath}");
             return;
         }
 
