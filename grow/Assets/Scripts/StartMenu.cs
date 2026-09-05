@@ -8,7 +8,7 @@ using UnityEngine.UI;
 /// </summary>
 public class StartMenu : MonoBehaviour
 {
-    [SerializeField] private string gameplaySceneName = "2";
+    [SerializeField] private string gameplaySceneName = "1";
     [SerializeField] [Range(0f, 1f)] private float alphaHitThreshold = 0.1f;
 
     private void Awake()
