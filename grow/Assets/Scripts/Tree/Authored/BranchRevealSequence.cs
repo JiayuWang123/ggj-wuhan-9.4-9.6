@@ -2,7 +2,8 @@ using UnityEngine;
 
 /// <summary>
 /// Enforces a designer-defined global order for branch triggers.
-/// A segment can only start after every earlier step has started or been pruned away.
+/// A segment can only start after every earlier step has started, been pruned,
+/// or is itself waiting only on a prune requirement.
 /// </summary>
 public class BranchRevealSequence : MonoBehaviour
 {
@@ -61,7 +62,7 @@ public class BranchRevealSequence : MonoBehaviour
 
             if (!segment.IsTriggerSatisfied())
             {
-                return null;
+                continue;
             }
 
             return segment;
@@ -95,7 +96,12 @@ public class BranchRevealSequence : MonoBehaviour
             return true;
         }
 
-        return segment.State != AuthoredTreeSegment.SegmentState.Locked;
+        if (segment.State != AuthoredTreeSegment.SegmentState.Locked)
+        {
+            return true;
+        }
+
+        return segment.IsWaitingOnlyOnPruneRequirement();
     }
 
     private int IndexOf(AuthoredTreeSegment segment)

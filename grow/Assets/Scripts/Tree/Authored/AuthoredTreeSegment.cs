@@ -39,6 +39,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float parentProgressThreshold = 0.5f;
     [SerializeField] private bool useTriggerPointDistance = true;
     [SerializeField] private float triggerDistance = 0.5f;
+    [Tooltip("This branch stays locked until the assigned segment has been pruned.")]
+    [SerializeField] private AuthoredTreeSegment requirePrunedBeforeStart;
 
     [Header("Prune")]
     [SerializeField] private bool canBePruned = true;
@@ -451,6 +453,26 @@ public class AuthoredTreeSegment : MonoBehaviour
     }
 
     public bool IsTriggerSatisfied()
+    {
+        return CanStartFromParentTrigger() && AreRequiredPrunedSegmentsComplete();
+    }
+
+    public bool IsWaitingOnlyOnPruneRequirement()
+    {
+        return CanStartFromParentTrigger() && !AreRequiredPrunedSegmentsComplete();
+    }
+
+    private bool AreRequiredPrunedSegmentsComplete()
+    {
+        if (requirePrunedBeforeStart == null)
+        {
+            return true;
+        }
+
+        return requirePrunedBeforeStart.WasPruned || !requirePrunedBeforeStart.gameObject.activeInHierarchy;
+    }
+
+    private bool CanStartFromParentTrigger()
     {
         if (state != SegmentState.Locked)
         {
