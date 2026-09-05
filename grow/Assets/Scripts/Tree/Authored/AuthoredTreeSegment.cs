@@ -26,6 +26,8 @@ public class AuthoredTreeSegment : MonoBehaviour
     [Header("Reveal")]
     [SerializeField] private RevealMode revealMode = RevealMode.ClipFromBottom;
     [SerializeField] private float revealDuration = 8f;
+    [SerializeField] private bool useAlphaTightRevealBounds = true;
+    [SerializeField, Range(0f, 1f)] private float alphaCutoff = 0.01f;
     [SerializeField] private SpriteRenderer spriteRenderer;
     [SerializeField] private Transform revealTarget;
     [SerializeField] private Vector2 localTip = new Vector2(0f, 1f);
@@ -57,6 +59,7 @@ public class AuthoredTreeSegment : MonoBehaviour
     private float spriteRevealRight;
     private float spriteRevealCenterX;
     private float spriteRevealCenterY;
+    private SpriteRevealBounds.Source revealBoundsSource = SpriteRevealBounds.Source.FullSpriteBounds;
     private float growthSpeedMultiplier = 1f;
     private bool occupiesBranchSlot;
     private bool wasPruned;
@@ -207,13 +210,7 @@ public class AuthoredTreeSegment : MonoBehaviour
         {
             fullColor = spriteRenderer.color;
             Sprite sprite = spriteRenderer.sprite;
-            spriteHalfHeight = sprite.bounds.extents.y;
-            spriteRevealBottom = sprite.bounds.min.y;
-            spriteRevealTop = sprite.bounds.max.y;
-            spriteRevealLeft = sprite.bounds.min.x;
-            spriteRevealRight = sprite.bounds.max.x;
-            spriteRevealCenterX = sprite.bounds.center.x;
-            spriteRevealCenterY = sprite.bounds.center.y;
+            CacheRevealBounds(sprite);
 
             float normalizedPivotY = sprite.pivot.y / sprite.rect.height;
             useBottomAnchoredReveal = revealTarget != transform
@@ -225,6 +222,31 @@ public class AuthoredTreeSegment : MonoBehaviour
             Vector3 tip = GetLocalTip();
             localTip = new Vector2(tip.x, tip.y);
         }
+    }
+
+    private void CacheRevealBounds(Sprite sprite)
+    {
+        if (useAlphaTightRevealBounds
+            && SpriteRevealBounds.TryComputeTightBounds(sprite, alphaCutoff, out SpriteRevealBounds.Bounds2D tightBounds, out revealBoundsSource))
+        {
+            spriteRevealBottom = tightBounds.MinY;
+            spriteRevealTop = tightBounds.MaxY;
+            spriteRevealLeft = tightBounds.MinX;
+            spriteRevealRight = tightBounds.MaxX;
+            spriteRevealCenterX = tightBounds.CenterX;
+            spriteRevealCenterY = tightBounds.CenterY;
+            spriteHalfHeight = tightBounds.HalfHeight;
+            return;
+        }
+
+        revealBoundsSource = SpriteRevealBounds.Source.FullSpriteBounds;
+        spriteHalfHeight = sprite.bounds.extents.y;
+        spriteRevealBottom = sprite.bounds.min.y;
+        spriteRevealTop = sprite.bounds.max.y;
+        spriteRevealLeft = sprite.bounds.min.x;
+        spriteRevealRight = sprite.bounds.max.x;
+        spriteRevealCenterX = sprite.bounds.center.x;
+        spriteRevealCenterY = sprite.bounds.center.y;
     }
 
     private void EnsureRevealMaterial()
@@ -787,5 +809,21 @@ public class AuthoredTreeSegment : MonoBehaviour
         Gizmos.color = Color.green;
         Gizmos.DrawWireSphere(TipWorldPosition, 0.05f);
         Gizmos.DrawLine(transform.position, TipWorldPosition);
+
+        if (spriteRenderer != null && spriteRenderer.sprite != null && useAlphaTightRevealBounds)
+        {
+            Vector3 bottomLeft = spriteRenderer.transform.TransformPoint(spriteRevealLeft, spriteRevealBottom, 0f);
+            Vector3 bottomRight = spriteRenderer.transform.TransformPoint(spriteRevealRight, spriteRevealBottom, 0f);
+            Vector3 topLeft = spriteRenderer.transform.TransformPoint(spriteRevealLeft, spriteRevealTop, 0f);
+            Vector3 topRight = spriteRenderer.transform.TransformPoint(spriteRevealRight, spriteRevealTop, 0f);
+
+            Gizmos.color = revealBoundsSource == SpriteRevealBounds.Source.FullSpriteBounds
+                ? Color.red
+                : Color.cyan;
+            Gizmos.DrawLine(bottomLeft, bottomRight);
+            Gizmos.DrawLine(bottomRight, topRight);
+            Gizmos.DrawLine(topRight, topLeft);
+            Gizmos.DrawLine(topLeft, bottomLeft);
+        }
     }
 }
