@@ -83,6 +83,12 @@ public class AuthoredTreeSegment : MonoBehaviour
     public bool IsPruning => state == SegmentState.Pruning;
     public bool OccupiesBranchSlot => occupiesBranchSlot;
     public bool WasPruned => wasPruned;
+    public bool IsDeferredByPrunePrerequisite =>
+        state == SegmentState.Locked
+        && !wasPruned
+        && gameObject.activeInHierarchy
+        && requirePrunedBeforeStart != null
+        && !requirePrunedBeforeStart.WasPruned;
     public Collider2D PruneCollider => pruneCollider;
     public Vector3 TipWorldPosition => transform.TransformPoint(GetLocalTip());
 

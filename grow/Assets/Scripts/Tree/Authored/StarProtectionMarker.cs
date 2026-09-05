@@ -14,6 +14,7 @@ public class StarProtectionMarker : MonoBehaviour
 
     private CircleCollider2D contactCollider;
 
+    public bool IsCollected { get; private set; }
     public float ActivationRadius => activationRadius;
     public int NutrientBonusOnCollect => nutrientBonusOnCollect;
     public Collider2D ContactCollider
@@ -65,5 +66,17 @@ public class StarProtectionMarker : MonoBehaviour
     {
         Gizmos.color = new Color(gizmoColor.r, gizmoColor.g, gizmoColor.b, 0.35f);
         Gizmos.DrawSphere(transform.position, activationRadius);
+    }
+
+    public void MarkCollected()
+    {
+        IsCollected = true;
+        gameObject.SetActive(false);
+    }
+
+    public void ResetCollected()
+    {
+        IsCollected = false;
+        gameObject.SetActive(true);
     }
 }

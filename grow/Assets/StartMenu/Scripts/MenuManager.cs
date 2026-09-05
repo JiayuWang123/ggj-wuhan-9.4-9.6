@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 public class GameController : MonoBehaviour
 {
     [Header("Gameplay scene loaded by Start / Restart")]
-    public string gameplaySceneName = "2";
+    public string gameplaySceneName = "1";
 
     public void QuitGame()
     {

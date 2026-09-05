@@ -77,6 +77,14 @@ public class StarProtectionSystem : MonoBehaviour
                 segments[i].ClearProtectedFromPruning();
             }
         }
+
+        for (int i = 0; i < starMarkers.Length; i++)
+        {
+            if (starMarkers[i] != null)
+            {
+                starMarkers[i].ResetCollected();
+            }
+        }
     }
 
     private void BindSegments()
@@ -125,7 +133,7 @@ public class StarProtectionSystem : MonoBehaviour
         for (int starIndex = 0; starIndex < starMarkers.Length; starIndex++)
         {
             StarProtectionMarker star = starMarkers[starIndex];
-            if (star == null)
+            if (star == null || star.IsCollected)
             {
                 continue;
             }
@@ -175,6 +183,7 @@ public class StarProtectionSystem : MonoBehaviour
 
         collectedStarIds.Add(starId);
         CollectedStarCount = collectedStarIds.Count;
+        star.MarkCollected();
         StarCollected?.Invoke(CollectedStarCount);
 
         int nutrientBonus = star.NutrientBonusOnCollect;

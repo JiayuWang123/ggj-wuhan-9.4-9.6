@@ -11,7 +11,7 @@ public class StartMenuUIController : MonoBehaviour
     private const float BottomButtonSpacing = 16f;
 
     [Header("Gameplay")]
-    [SerializeField] private string gameplaySceneName = "2";
+    [SerializeField] private string gameplaySceneName = "1";
 
     [Header("Placeholder sprites (replace in Inspector or keep defaults)")]
     [SerializeField] private Sprite buttonSprite;

@@ -165,6 +165,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 9265892}
 --- !u!60 &9265892
@@ -513,12 +514,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 353543330}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.874, y: 1.202, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0.025653536, w: 0.9996709}
+  m_LocalPosition: {x: 1.5495632, y: 1.2896024, z: 0}
+  m_LocalScale: {x: 0.85963243, y: 1.0209898, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 1222936762}
+  m_Father: {fileID: 1012331785}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &353543332
 MonoBehaviour:
@@ -578,6 +579,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 374035039}
 --- !u!60 &374035039
@@ -893,6 +895,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 642661576}
 --- !u!60 &642661576
@@ -1084,9 +1087,9 @@ CircleCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.0000003732529, y: 0}
   serializedVersion: 2
-  m_Radius: 1.6462939
+  m_Radius: 0.22335349
 --- !u!1 &769558627
 GameObject:
   m_ObjectHideFlags: 0
@@ -1447,6 +1450,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 973056973}
 --- !u!60 &973056973
@@ -1569,6 +1573,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1012331784}
 --- !u!60 &1012331784
@@ -1644,6 +1649,7 @@ Transform:
   - {fileID: 163276399}
   - {fileID: 1927125917}
   - {fileID: 769558628}
+  - {fileID: 353543331}
   m_Father: {fileID: 1707013215}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 2.94}
 --- !u!1 &1048188065
@@ -1773,6 +1779,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.2
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 0
   pruneCollider: {fileID: 1108056485}
 --- !u!4 &1108056484
@@ -1980,6 +1987,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1222936761}
 --- !u!60 &1222936761
@@ -2064,7 +2072,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1221788348}
-  - {fileID: 353543331}
   m_Father: {fileID: 1707013215}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1224731570
@@ -2449,13 +2456,14 @@ MonoBehaviour:
   alphaCutoff: 0.01
   spriteRenderer: {fileID: 2044139838}
   revealTarget: {fileID: 2044139837}
-  localTip: {x: 2.1849756, y: -0.6718368}
-  parentSegment: {fileID: 1222936760}
+  localTip: {x: 2.1849756, y: -0.6718366}
+  parentSegment: {fileID: 1012331783}
   startImmediatelyOnPlay: 0
   trigger: {fileID: 353543332}
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1447846551}
 --- !u!60 &1447846551
@@ -2532,7 +2540,7 @@ Transform:
   m_GameObject: {fileID: 1447846549}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0.14784244, w: 0.98901093}
-  m_LocalPosition: {x: -0.726, y: 0.254, z: 0}
+  m_LocalPosition: {x: -0.638, y: 0.053, z: 0}
   m_LocalScale: {x: 0.2296901, y: 0.21250126, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -2565,7 +2573,7 @@ Transform:
   m_GameObject: {fileID: 1517001178}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.004, y: -0.217, z: 0}
+  m_LocalPosition: {x: -0.233, y: 0.012, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2602,6 +2610,7 @@ GameObject:
   - component: {fileID: 2309876545}
   - component: {fileID: 2409876546}
   - component: {fileID: 2509876547}
+  - component: {fileID: 2609876548}
   m_Layer: 0
   m_Name: AuthoredTree
   m_TagString: Untagged
@@ -2720,6 +2729,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 1856471492}
   canBePruned: 1
   pruneCollider: {fileID: 1715330822}
 --- !u!60 &1715330822
@@ -3058,6 +3068,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1797754863}
 --- !u!60 &1797754863
@@ -3126,8 +3137,8 @@ Transform:
   m_GameObject: {fileID: 1797754861}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 2.155, y: 0.142, z: 0}
-  m_LocalScale: {x: 1.3417, y: 1.2, z: 1}
+  m_LocalPosition: {x: 2.269, y: 0.117, z: 0}
+  m_LocalScale: {x: 1.7720652, y: 1.4300053, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1048188066}
@@ -3346,6 +3357,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1856471493}
 --- !u!60 &1856471493
@@ -3558,6 +3570,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 1928292637}
 --- !u!60 &1928292637
@@ -3733,6 +3746,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 2005108835}
 --- !u!60 &2005108835
@@ -3854,6 +3868,7 @@ MonoBehaviour:
   parentProgressThreshold: 0.5
   useTriggerPointDistance: 1
   triggerDistance: 0.5
+  requirePrunedBeforeStart: {fileID: 0}
   canBePruned: 1
   pruneCollider: {fileID: 2041510116}
 --- !u!60 &2041510116
@@ -4028,9 +4043,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   tree: {fileID: 1707013214}
-  maxConcurrentBranches: 6
+  startingNutrients: 6
   starProtection: {fileID: 2409876546}
-  maxIncreaseOnFirstStar: 2
 --- !u!114 &2209876544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4049,11 +4063,11 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 2005108834}
   - {fileID: 2041510115}
-  - {fileID: 1856471492}
-  - {fileID: 1715330821}
-  - {fileID: 642661575}
   - {fileID: 1222936760}
   - {fileID: 1447846550}
+  - {fileID: 1856471492}
+  - {fileID: 642661575}
+  - {fileID: 1715330821}
   - {fileID: 1797754862}
   - {fileID: 374035038}
   - {fileID: 1928292636}
@@ -4107,6 +4121,21 @@ MonoBehaviour:
   showHud: 1
   screenOffset: {x: 12, y: 142}
   panelWidth: 220
+--- !u!114 &2609876548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1707013212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9b8c7d6e5f4439281a0b9c8d7e6f501, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  starProtection: {fileID: 2409876546}
+  nextSceneName: 
+  transitionDelaySeconds: 0.5
 --- !u!1 &3000000001
 GameObject:
   m_ObjectHideFlags: 0
@@ -4135,8 +4164,8 @@ Transform:
   m_GameObject: {fileID: 3000000001}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.059, y: -0.64, z: 0}
-  m_LocalScale: {x: 0.11219681, y: 0.121484995, z: 1}
+  m_LocalPosition: {x: 3.043, y: -0.626, z: 0}
+  m_LocalScale: {x: 0.79844856, y: 0.8954416, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1707013215}
@@ -4182,7 +4211,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9ac154778d05b914892566691b8f9987, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4206,6 +4235,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   activationRadius: 0.2
+  nutrientBonusOnCollect: 0
   gizmoColor: {r: 1, g: 0.92, b: 0.2, a: 0.95}
 --- !u!4 &3000000005
 Transform:
@@ -4216,8 +4246,8 @@ Transform:
   m_GameObject: {fileID: 3000000006}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 3.245, y: -1.936, z: 0}
-  m_LocalScale: {x: 0.125265, y: 0.12694499, z: 1}
+  m_LocalPosition: {x: 3.254, y: -1.972, z: 0}
+  m_LocalScale: {x: 0.56725, y: 0.6029252, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1707013215}
@@ -4254,6 +4284,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   activationRadius: 0.2
+  nutrientBonusOnCollect: 2
   gizmoColor: {r: 1, g: 0.92, b: 0.2, a: 0.95}
 --- !u!4 &3000000008
 Transform:
@@ -4264,8 +4295,8 @@ Transform:
   m_GameObject: {fileID: 3000000011}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1.2453, y: 0.4886, z: 0}
-  m_LocalScale: {x: 0.109537244, y: 0.1167281, z: 1}
+  m_LocalPosition: {x: 1.285, y: 0.496, z: 0}
+  m_LocalScale: {x: 0.770945, y: 0.87039477, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1707013215}
@@ -4311,7 +4342,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9fcfd2f24a83fdb47b1e229ce887c773, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4335,6 +4366,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   activationRadius: 0.2
+  nutrientBonusOnCollect: 0
   gizmoColor: {r: 1, g: 0.92, b: 0.2, a: 0.95}
 --- !u!1 &3000000011
 GameObject:
@@ -4396,7 +4428,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 20
-  m_Sprite: {fileID: 21300000, guid: a3c98c51ee495124e9f2b514967d2af3, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 9ac154778d05b914892566691b8f9987, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -4439,9 +4471,9 @@ CircleCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.00000015462749, y: 0}
   serializedVersion: 2
-  m_Radius: 1.7133836
+  m_Radius: 0.2297808
 --- !u!58 &3000000014
 CircleCollider2D:
   m_ObjectHideFlags: 0
@@ -4474,9 +4506,9 @@ CircleCollider2D:
   m_IsTrigger: 1
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: 0.00000042030598, y: 0}
   serializedVersion: 2
-  m_Radius: 1.5754856
+  m_Radius: 0.33171612
 --- !u!1 &9900000001
 GameObject:
   m_ObjectHideFlags: 0

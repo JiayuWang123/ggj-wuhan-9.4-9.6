@@ -61,6 +61,11 @@ public class BranchRevealSequence : MonoBehaviour
 
             if (!segment.IsTriggerSatisfied())
             {
+                if (segment.IsDeferredByPrunePrerequisite)
+                {
+                    continue;
+                }
+
                 return null;
             }
 
@@ -91,6 +96,11 @@ public class BranchRevealSequence : MonoBehaviour
         }
 
         if (segment.WasPruned || !segment.gameObject.activeInHierarchy)
+        {
+            return true;
+        }
+
+        if (segment.IsDeferredByPrunePrerequisite)
         {
             return true;
         }
