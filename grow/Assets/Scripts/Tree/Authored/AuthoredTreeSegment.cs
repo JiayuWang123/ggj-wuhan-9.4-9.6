@@ -75,6 +75,26 @@ public class AuthoredTreeSegment : MonoBehaviour
     public Collider2D PruneCollider => pruneCollider;
     public Vector3 TipWorldPosition => transform.TransformPoint(GetLocalTip());
 
+    public bool IsRevealedPortionTouchingStar(Vector3 starWorldPosition, float starRadius, Collider2D starCollider)
+    {
+        if (state == SegmentState.Locked || state == SegmentState.Pruning || WasPruned)
+        {
+            return false;
+        }
+
+        if (state == SegmentState.Complete)
+        {
+            return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
+        }
+
+        if (revealProgress <= 0.001f || !IsWorldPointInRevealedRegion(starWorldPosition))
+        {
+            return false;
+        }
+
+        return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
+    }
+
     public event Action<AuthoredTreeSegment> RevealStarted;
     public event Action<AuthoredTreeSegment> RevealCompleted;
     public event Action<AuthoredTreeSegment> PruneCompleted;
@@ -572,6 +592,50 @@ public class AuthoredTreeSegment : MonoBehaviour
                 }
                 break;
         }
+    }
+
+    private bool IsPruneColliderTouchingStar(Vector3 starWorldPosition, float starRadius, Collider2D starCollider)
+    {
+        if (pruneCollider == null || !pruneCollider.enabled)
+        {
+            return false;
+        }
+
+        Vector2 closestOnBranch = pruneCollider.ClosestPoint(starWorldPosition);
+        if (Vector2.Distance(closestOnBranch, starWorldPosition) <= starRadius)
+        {
+            return true;
+        }
+
+        if (starCollider == null || !starCollider.enabled)
+        {
+            return false;
+        }
+
+        ColliderDistance2D distance = Physics2D.Distance(starCollider, pruneCollider);
+        return distance.isOverlapped;
+    }
+
+    private bool IsWorldPointInRevealedRegion(Vector3 worldPoint)
+    {
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return revealProgress > 0f;
+        }
+
+        if (revealMode == RevealMode.ClipFromBottom)
+        {
+            Vector3 rendererLocal = spriteRenderer.transform.InverseTransformPoint(worldPoint);
+            float revealFrontY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, revealProgress);
+            return rendererLocal.y <= revealFrontY + 0.02f;
+        }
+
+        if (revealMode == RevealMode.ScaleFromRoot)
+        {
+            return revealProgress + 0.001f >= GetRevealProgressForWorldPoint(worldPoint);
+        }
+
+        return revealProgress >= 1f;
     }
 
     private void SetPruneColliderEnabled(bool enabled)

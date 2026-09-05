@@ -2992,6 +2992,7 @@ GameObject:
   - component: {fileID: 2209876544}
   - component: {fileID: 2309876545}
   - component: {fileID: 2409876546}
+  - component: {fileID: 2509876547}
   m_Layer: 0
   m_Name: AuthoredTree
   m_TagString: Untagged
@@ -3513,6 +3514,22 @@ MonoBehaviour:
   - {fileID: 3000000004}
   - {fileID: 3000000007}
   - {fileID: 3000000010}
+--- !u!114 &2509876547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1707013212}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c8d9e0f1a2b3456789abcdef01234567, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  starProtection: {fileID: 2409876546}
+  showHud: 1
+  screenOffset: {x: 12, y: 142}
+  panelWidth: 220
 --- !u!1 &3000000001
 GameObject:
   m_ObjectHideFlags: 0

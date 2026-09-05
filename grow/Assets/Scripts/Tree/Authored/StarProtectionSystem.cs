@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -10,8 +11,16 @@ public class StarProtectionSystem : MonoBehaviour
     [SerializeField] private AuthoredTreeController tree;
     [SerializeField] private StarProtectionMarker[] starMarkers = System.Array.Empty<StarProtectionMarker>();
 
+    private const int MaxCollectibleStars = 3;
+
     private readonly HashSet<int> activatedPairs = new HashSet<int>();
+    private readonly HashSet<int> collectedStarIds = new HashSet<int>();
     private AuthoredTreeSegment[] segments = System.Array.Empty<AuthoredTreeSegment>();
+
+    public int CollectedStarCount { get; private set; }
+    public int MaxStarCount => MaxCollectibleStars;
+
+    public event Action<int> StarCollected;
 
     private void Awake()
     {
@@ -55,6 +64,9 @@ public class StarProtectionSystem : MonoBehaviour
     public void ResetProtectionState()
     {
         activatedPairs.Clear();
+        collectedStarIds.Clear();
+        CollectedStarCount = 0;
+        StarCollected?.Invoke(CollectedStarCount);
         RefreshSegmentsIfNeeded();
 
         for (int i = 0; i < segments.Length; i++)
@@ -131,7 +143,10 @@ public class StarProtectionSystem : MonoBehaviour
                     continue;
                 }
 
-                if (!IsStarTouchingBranchCollider(star, branchCollider))
+                if (!segment.IsRevealedPortionTouchingStar(
+                        star.transform.position,
+                        star.ActivationRadius,
+                        star.ContactCollider))
                 {
                     continue;
                 }
@@ -142,10 +157,24 @@ public class StarProtectionSystem : MonoBehaviour
                     continue;
                 }
 
+                TryCollectStar(star);
                 activatedPairs.Add(pairKey);
                 AuthoredTreeSegment.ProtectBranchChainToRoot(segment);
             }
         }
+    }
+
+    private void TryCollectStar(StarProtectionMarker star)
+    {
+        int starId = star.GetInstanceID();
+        if (collectedStarIds.Contains(starId) || CollectedStarCount >= MaxCollectibleStars)
+        {
+            return;
+        }
+
+        collectedStarIds.Add(starId);
+        CollectedStarCount = collectedStarIds.Count;
+        StarCollected?.Invoke(CollectedStarCount);
     }
 
     private static bool IsSegmentEligibleForStarCheck(AuthoredTreeSegment segment)
@@ -157,25 +186,6 @@ public class StarProtectionSystem : MonoBehaviour
 
         return segment.State == AuthoredTreeSegment.SegmentState.Revealing
             || segment.State == AuthoredTreeSegment.SegmentState.Complete;
-    }
-
-    private static bool IsStarTouchingBranchCollider(StarProtectionMarker star, Collider2D branchCollider)
-    {
-        Vector2 starPosition = star.transform.position;
-        Vector2 closestOnBranch = branchCollider.ClosestPoint(starPosition);
-        if (Vector2.Distance(starPosition, closestOnBranch) <= star.ActivationRadius)
-        {
-            return true;
-        }
-
-        Collider2D starCollider = star.ContactCollider;
-        if (starCollider == null || !starCollider.enabled)
-        {
-            return false;
-        }
-
-        ColliderDistance2D distance = Physics2D.Distance(starCollider, branchCollider);
-        return distance.isOverlapped;
     }
 
     private static int BuildPairKey(StarProtectionMarker star, AuthoredTreeSegment segment)
