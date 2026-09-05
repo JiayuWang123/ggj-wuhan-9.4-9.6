@@ -1,0 +1,915 @@
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// One authored piece of a tree (trunk or branch). Starts fully hidden, then reveals upward over time.
+/// ClipFromBottom keeps the sprite in place and only shows pixels from the root upward.
+[DisallowMultipleComponent]
+public class AuthoredTreeSegment : MonoBehaviour
+{
+    public enum RevealMode
+    {
+        ClipFromBottom,
+        ScaleFromRoot,
+        Fade,
+        ClipFromLeft,
+        ClipFromRight,
+        ClipFromTop
+    }
+
+    public enum SegmentState
+    {
+        Locked,
+        Revealing,
+        Complete,
+        Pruning
+    }
+
+    [Header("Reveal")]
+    [SerializeField] private RevealMode revealMode = RevealMode.ClipFromBottom;
+    [SerializeField] private float revealDuration = 8f;
+    [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] private Transform revealTarget;
+    [SerializeField] private Vector2 localTip = new Vector2(0f, 1f);
+
+    [Header("Trigger (when to start growing)")]
+    [SerializeField] private AuthoredTreeSegment parentSegment;
+    [SerializeField] private bool startImmediatelyOnPlay;
+    [SerializeField] private TreeRevealTrigger trigger;
+    [SerializeField, Range(0f, 1f)] private float parentProgressThreshold = 0.5f;
+    [SerializeField] private bool useTriggerPointDistance = true;
+    [SerializeField] private float triggerDistance = 0.5f;
+
+    [Header("Prune")]
+    [SerializeField] private bool canBePruned = true;
+    [SerializeField] private Collider2D pruneCollider;
+
+    private Vector3 fullLocalScale;
+    private Color fullColor = Color.white;
+    private float revealProgress;
+    private SegmentState state = SegmentState.Locked;
+
+    private Vector3 fullLocalPosition;
+    private float spriteHalfHeight;
+    private bool useBottomAnchoredReveal;
+    private Material revealMaterial;
+    private float spriteRevealBottom;
+    private float spriteRevealTop;
+    private float spriteRevealLeft;
+    private float spriteRevealRight;
+    private float spriteRevealCenterX;
+    private float spriteRevealCenterY;
+    private float growthSpeedMultiplier = 1f;
+    private bool occupiesBranchSlot;
+    private bool wasPruned;
+    private bool protectedFromPruning;
+    private bool defaultCanBePruned = true;
+
+    private static readonly int RevealProgressId = Shader.PropertyToID("_RevealProgress");
+    private static readonly int RevealMinId = Shader.PropertyToID("_RevealMin");
+    private static readonly int RevealMaxId = Shader.PropertyToID("_RevealMax");
+    private static readonly int RevealDirectionId = Shader.PropertyToID("_RevealDirection");
+    private static readonly Dictionary<Sprite, Bounds> AlphaBoundsCache = new Dictionary<Sprite, Bounds>();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetAlphaBoundsCache()
+    {
+        AlphaBoundsCache.Clear();
+    }
+
+    // Scan once per sprite, including textures imported with Read/Write disabled.
+    // Pixel edges (not pixel centres) preserve the outermost visible pixels.
+    private static Bounds GetAlphaTightBounds(Sprite sprite)
+    {
+        if (AlphaBoundsCache.TryGetValue(sprite, out Bounds cached)) return cached;
+        Bounds bounds = sprite.bounds;
+        RenderTexture previous = RenderTexture.active;
+        RenderTexture temporary = null;
+        Texture2D readable = null;
+        try
+        {
+            // Rotated/tight atlas entries do not expose a rectangular pixel region.
+            if (sprite.packed && (sprite.packingMode == SpritePackingMode.Tight
+                || sprite.packingRotation != SpritePackingRotation.None))
+                throw new InvalidOperationException("Use an unpacked or unrotated rectangular sprite for alpha bounds.");
+
+            Rect rect = sprite.textureRect;
+            int width = Mathf.RoundToInt(rect.width);
+            int height = Mathf.RoundToInt(rect.height);
+            if (width == 0 || height == 0) return bounds;
+            Texture2D texture = sprite.texture;
+            temporary = RenderTexture.GetTemporary(texture.width, texture.height, 0,
+                RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            Graphics.Blit(texture, temporary);
+            RenderTexture.active = temporary;
+            readable = new Texture2D(width, height, TextureFormat.RGBA32, false, true);
+            readable.ReadPixels(rect, 0, 0, false);
+            Color32[] pixels = readable.GetPixels32();
+            int minX = width, minY = height, maxX = -1, maxY = -1;
+            for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                if (pixels[y * width + x].a == 0) continue;
+                minX = Mathf.Min(minX, x);
+                minY = Mathf.Min(minY, y);
+                maxX = Mathf.Max(maxX, x);
+                maxY = Mathf.Max(maxY, y);
+            }
+            if (maxX >= minX)
+            {
+                Vector2 offset = sprite.textureRectOffset - sprite.pivot;
+                float ppu = sprite.pixelsPerUnit;
+                bounds.SetMinMax(
+                    new Vector3((minX + offset.x) / ppu, (minY + offset.y) / ppu, 0f),
+                    new Vector3((maxX + 1 + offset.x) / ppu, (maxY + 1 + offset.y) / ppu, 0f));
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogWarning($"{sprite.name}: Alpha bounds unavailable; using sprite bounds. {exception.Message}");
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            if (temporary != null) RenderTexture.ReleaseTemporary(temporary);
+            if (readable != null) Destroy(readable);
+        }
+        AlphaBoundsCache[sprite] = bounds;
+        return bounds;
+    }
+
+    public AuthoredTreeSegment ParentSegment => parentSegment;
+    public TreeRevealTrigger BranchTrigger => trigger;
+    public float BranchTriggerDistance => triggerDistance;
+    public SegmentState State => state;
+    public float RevealProgress => revealProgress;
+    public bool CanBePruned => canBePruned && !protectedFromPruning && (state == SegmentState.Revealing || state == SegmentState.Complete);
+    public bool IsProtectedFromPruning => protectedFromPruning;
+    public bool IsPruning => state == SegmentState.Pruning;
+    public bool OccupiesBranchSlot => occupiesBranchSlot;
+    public bool WasPruned => wasPruned;
+    public Collider2D PruneCollider => pruneCollider;
+    public Vector3 TipWorldPosition => transform.TransformPoint(GetLocalTip());
+
+    public bool IsRevealedPortionTouchingStar(Vector3 starWorldPosition, float starRadius, Collider2D starCollider)
+    {
+        if (state == SegmentState.Locked || state == SegmentState.Pruning || WasPruned)
+        {
+            return false;
+        }
+
+        if (state == SegmentState.Complete)
+        {
+            return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
+        }
+
+        if (revealProgress <= 0.001f || !IsWorldPointInRevealedRegion(starWorldPosition))
+        {
+            return false;
+        }
+
+        return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
+    }
+
+    public event Action<AuthoredTreeSegment> RevealStarted;
+    public event Action<AuthoredTreeSegment> RevealCompleted;
+    public event Action<AuthoredTreeSegment> PruneCompleted;
+
+    public void SetGrowthSpeedMultiplier(float multiplier)
+    {
+        growthSpeedMultiplier = Mathf.Clamp01(multiplier);
+    }
+
+    public void SetProtectedFromPruning(bool value)
+    {
+        protectedFromPruning = value;
+        if (value)
+        {
+            canBePruned = false;
+            SetPruneColliderEnabled(false);
+        }
+    }
+
+    public void LockPruningByStar()
+    {
+        protectedFromPruning = true;
+        canBePruned = false;
+        SetPruneColliderEnabled(false);
+    }
+
+    public void ClearProtectedFromPruning()
+    {
+        protectedFromPruning = false;
+        canBePruned = defaultCanBePruned;
+        if (state == SegmentState.Revealing || state == SegmentState.Complete)
+        {
+            SetPruneColliderEnabled(true);
+        }
+        else
+        {
+            SetPruneColliderEnabled(false);
+        }
+    }
+
+    public static void ProtectBranchChainToRoot(AuthoredTreeSegment segment)
+    {
+        AuthoredTreeSegment current = segment;
+        while (current != null)
+        {
+            current.LockPruningByStar();
+            current = current.ParentSegment;
+        }
+    }
+
+    private void Awake()
+    {
+        defaultCanBePruned = canBePruned;
+        CacheVisualReferences();
+
+        if (Application.isPlaying && UsesClipReveal() && !startImmediatelyOnPlay)
+        {
+            EnsureRevealMaterial();
+            ApplyRevealVisual();
+        }
+    }
+
+    private void OnValidate()
+    {
+        if (Application.isPlaying) return;
+        CacheVisualReferences();
+    }
+
+    private void CacheVisualReferences()
+    {
+        if (spriteRenderer == null)
+        {
+            spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+        }
+
+        if (revealTarget == null)
+        {
+            if (spriteRenderer != null)
+            {
+                revealTarget = spriteRenderer.transform;
+            }
+            else
+            {
+                Transform visual = transform.Find("Visual") ?? transform.Find("Visual1");
+                revealTarget = visual != null ? visual : transform;
+            }
+        }
+
+        if (pruneCollider == null)
+        {
+            pruneCollider = GetComponent<Collider2D>();
+            if (pruneCollider == null)
+            {
+                pruneCollider = GetComponentInChildren<Collider2D>();
+            }
+        }
+
+        if (revealTarget != null)
+        {
+            fullLocalScale = revealTarget.localScale;
+            fullLocalPosition = revealTarget.localPosition;
+        }
+
+        if (spriteRenderer != null && spriteRenderer.sprite != null)
+        {
+            fullColor = spriteRenderer.color;
+            Sprite sprite = spriteRenderer.sprite;
+            // OnValidate can run off the main thread: GPU readback is only done in play mode.
+            Bounds visibleBounds = Application.isPlaying ? GetAlphaTightBounds(sprite) : sprite.bounds;
+            spriteHalfHeight = sprite.bounds.extents.y;
+            spriteRevealBottom = visibleBounds.min.y;
+            spriteRevealTop = visibleBounds.max.y;
+            spriteRevealLeft = visibleBounds.min.x;
+            spriteRevealRight = visibleBounds.max.x;
+            spriteRevealCenterX = visibleBounds.center.x;
+            spriteRevealCenterY = visibleBounds.center.y;
+
+            float normalizedPivotY = sprite.pivot.y / sprite.rect.height;
+            useBottomAnchoredReveal = revealTarget != transform
+                && revealMode == RevealMode.ScaleFromRoot
+                && normalizedPivotY > 0.25f;
+
+            EnsureRevealMaterial();
+
+            Vector3 tip = GetLocalTip();
+            localTip = new Vector2(tip.x, tip.y);
+        }
+    }
+
+    private void EnsureRevealMaterial()
+    {
+        if (!Application.isPlaying || !UsesClipReveal() || spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return;
+        }
+
+        Shader revealShader = Shader.Find("Sprites/AuthoredTreeReveal");
+        if (revealShader == null)
+        {
+            Debug.LogWarning($"{name}: AuthoredTreeReveal shader not found. Falling back to scale reveal.", this);
+            revealMode = RevealMode.ScaleFromRoot;
+            return;
+        }
+
+        if (revealMaterial == null || revealMaterial.shader != revealShader)
+        {
+            revealMaterial = new Material(revealShader);
+            revealMaterial.mainTexture = spriteRenderer.sprite.texture;
+            spriteRenderer.material = revealMaterial;
+        }
+
+        ApplyClipRevealShaderBounds();
+    }
+
+    private bool UsesClipReveal()
+    {
+        return revealMode == RevealMode.ClipFromBottom
+            || revealMode == RevealMode.ClipFromLeft
+            || revealMode == RevealMode.ClipFromRight
+            || revealMode == RevealMode.ClipFromTop;
+    }
+
+    private void ApplyClipRevealShaderBounds()
+    {
+        if (revealMaterial == null)
+        {
+            return;
+        }
+
+        switch (revealMode)
+        {
+            case RevealMode.ClipFromLeft:
+                revealMaterial.SetFloat(RevealDirectionId, 1f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealLeft);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealRight);
+                break;
+
+            case RevealMode.ClipFromRight:
+                revealMaterial.SetFloat(RevealDirectionId, 2f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealLeft);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealRight);
+                break;
+
+            case RevealMode.ClipFromTop:
+                revealMaterial.SetFloat(RevealDirectionId, 3f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealBottom);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealTop);
+                break;
+
+            default:
+                revealMaterial.SetFloat(RevealDirectionId, 0f);
+                revealMaterial.SetFloat(RevealMinId, spriteRevealBottom);
+                revealMaterial.SetFloat(RevealMaxId, spriteRevealTop);
+                break;
+        }
+    }
+
+    private float GetRevealContactProgress()
+    {
+        return state == SegmentState.Locked ? 0f : revealProgress;
+    }
+
+    private Vector3 GetLocalTip()
+    {
+        return GetLocalTipAtProgress(GetRevealContactProgress());
+    }
+
+    private Vector3 GetLocalTipAtProgress(float progress)
+    {
+        if (spriteRenderer != null && spriteRenderer.sprite != null)
+        {
+            if (UsesClipReveal())
+            {
+                Vector3 tipInRendererLocal;
+                switch (revealMode)
+                {
+                    case RevealMode.ClipFromLeft:
+                        tipInRendererLocal = new Vector3(
+                            Mathf.Lerp(spriteRevealLeft, spriteRevealRight, progress),
+                            spriteRevealCenterY,
+                            0f);
+                        break;
+
+                    case RevealMode.ClipFromRight:
+                        tipInRendererLocal = new Vector3(
+                            Mathf.Lerp(spriteRevealRight, spriteRevealLeft, progress),
+                            spriteRevealCenterY,
+                            0f);
+                        break;
+
+                    case RevealMode.ClipFromTop:
+                        tipInRendererLocal = new Vector3(
+                            spriteRevealCenterX,
+                            Mathf.Lerp(spriteRevealTop, spriteRevealBottom, progress),
+                            0f);
+                        break;
+
+                    default:
+                        tipInRendererLocal = new Vector3(
+                            spriteRevealCenterX,
+                            Mathf.Lerp(spriteRevealBottom, spriteRevealTop, progress),
+                            0f);
+                        break;
+                }
+
+                return transform.InverseTransformPoint(spriteRenderer.transform.TransformPoint(tipInRendererLocal));
+            }
+
+            Bounds bounds = spriteRenderer.bounds;
+            Vector3 boundsTipWorld = new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+            return transform.InverseTransformPoint(boundsTipWorld);
+        }
+
+        return new Vector3(localTip.x, localTip.y, 0f);
+    }
+
+    private void Start()
+    {
+        CacheVisualReferences();
+        HideInstant();
+        if (startImmediatelyOnPlay && GetComponentInParent<AuthoredTreeController>() == null)
+        {
+            BeginReveal();
+        }
+    }
+
+    private void Update()
+    {
+        if (state == SegmentState.Pruning)
+        {
+            return;
+        }
+
+        if (state != SegmentState.Revealing || growthSpeedMultiplier <= 0f)
+        {
+            return;
+        }
+
+        float step = revealDuration <= 0f ? 1f : Time.deltaTime / revealDuration;
+        revealProgress = Mathf.Clamp01(revealProgress + step * growthSpeedMultiplier);
+        ApplyRevealVisual();
+
+        if (revealProgress >= 1f)
+        {
+            state = SegmentState.Complete;
+            RevealCompleted?.Invoke(this);
+        }
+    }
+
+    public float GetRevealProgressForWorldPoint(Vector3 worldPoint)
+    {
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return 1f;
+        }
+
+        if (revealMode == RevealMode.ClipFromLeft)
+        {
+            Vector3 leftWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealLeft, spriteRevealCenterY, 0f));
+            Vector3 rightWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealRight, spriteRevealCenterY, 0f));
+            float leftLocalX = transform.InverseTransformPoint(leftWorld).x;
+            float rightLocalX = transform.InverseTransformPoint(rightWorld).x;
+            float targetLocalX = transform.InverseTransformPoint(worldPoint).x;
+
+            if (Mathf.Approximately(leftLocalX, rightLocalX))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(leftLocalX, rightLocalX, targetLocalX));
+        }
+
+        if (revealMode == RevealMode.ClipFromRight)
+        {
+            Vector3 leftWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealLeft, spriteRevealCenterY, 0f));
+            Vector3 rightWorld = spriteRenderer.transform.TransformPoint(new Vector3(spriteRevealRight, spriteRevealCenterY, 0f));
+            float leftLocalX = transform.InverseTransformPoint(leftWorld).x;
+            float rightLocalX = transform.InverseTransformPoint(rightWorld).x;
+            float targetLocalX = transform.InverseTransformPoint(worldPoint).x;
+
+            if (Mathf.Approximately(leftLocalX, rightLocalX))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(rightLocalX, leftLocalX, targetLocalX));
+        }
+
+        if (revealMode == RevealMode.ClipFromTop)
+        {
+            Vector3 topDownBottomWorld = spriteRenderer.transform.TransformPoint(
+                new Vector3(spriteRevealCenterX, spriteRevealBottom, 0f));
+            Vector3 topDownTopWorld = spriteRenderer.transform.TransformPoint(
+                new Vector3(spriteRevealCenterX, spriteRevealTop, 0f));
+            float topDownBottomLocalY = transform.InverseTransformPoint(topDownBottomWorld).y;
+            float topDownTopLocalY = transform.InverseTransformPoint(topDownTopWorld).y;
+            float topDownTargetLocalY = transform.InverseTransformPoint(worldPoint).y;
+
+            if (Mathf.Approximately(topDownBottomLocalY, topDownTopLocalY))
+            {
+                return 1f;
+            }
+
+            return Mathf.Clamp01(Mathf.InverseLerp(
+                topDownTopLocalY,
+                topDownBottomLocalY,
+                topDownTargetLocalY));
+        }
+
+        Vector3 bottomWorld = spriteRenderer.transform.TransformPoint(
+            new Vector3(spriteRevealCenterX, spriteRevealBottom, 0f));
+        Vector3 topWorld = spriteRenderer.transform.TransformPoint(
+            new Vector3(spriteRevealCenterX, spriteRevealTop, 0f));
+        float bottomLocalY = transform.InverseTransformPoint(bottomWorld).y;
+        float topLocalY = transform.InverseTransformPoint(topWorld).y;
+        float targetLocalY = transform.InverseTransformPoint(worldPoint).y;
+
+        if (Mathf.Approximately(bottomLocalY, topLocalY))
+        {
+            return 1f;
+        }
+
+        return Mathf.Clamp01(Mathf.InverseLerp(bottomLocalY, topLocalY, targetLocalY));
+    }
+
+    public bool IsTriggerSatisfied()
+    {
+        if (state != SegmentState.Locked)
+        {
+            return false;
+        }
+
+        if (wasPruned || !gameObject.activeInHierarchy)
+        {
+            return false;
+        }
+
+        if (startImmediatelyOnPlay)
+        {
+            return true;
+        }
+
+        if (parentSegment == null)
+        {
+            return false;
+        }
+
+        if (parentSegment.State == SegmentState.Locked)
+        {
+            return false;
+        }
+
+        // A trigger may sit outside the parent's alpha-tight bounds (for example,
+        // at the visual junction of an overlaid branch). Once the parent has fully
+        // revealed, never leave its child permanently locked because of that point.
+        if (parentSegment.State == SegmentState.Complete)
+        {
+            return true;
+        }
+
+        if (trigger != null)
+        {
+            return HasParentTipReachedJunction();
+        }
+
+        return parentSegment.RevealProgress >= parentProgressThreshold;
+    }
+
+    private bool HasParentTipReachedJunction()
+    {
+        if (parentSegment.RevealProgress <= 0.001f)
+        {
+            return false;
+        }
+
+        Vector3 tipLocal = parentSegment.transform.InverseTransformPoint(parentSegment.TipWorldPosition);
+        Vector3 triggerLocal = parentSegment.transform.InverseTransformPoint(trigger.WorldPosition);
+
+        if (Vector2.Distance(tipLocal, triggerLocal) <= triggerDistance)
+        {
+            return true;
+        }
+
+        float requiredProgress = parentSegment.GetRevealProgressForWorldPoint(trigger.WorldPosition);
+        return parentSegment.RevealProgress >= requiredProgress;
+    }
+
+    public void BeginReveal()
+    {
+        if (state != SegmentState.Locked)
+        {
+            return;
+        }
+
+        if (wasPruned || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        state = SegmentState.Revealing;
+        occupiesBranchSlot = true;
+        revealProgress = 0f;
+        ApplyRevealVisual();
+        SetPruneColliderEnabled(true);
+        RevealStarted?.Invoke(this);
+    }
+
+    public void HideInstant()
+    {
+        state = SegmentState.Locked;
+        occupiesBranchSlot = false;
+        wasPruned = false;
+        revealProgress = 0f;
+        growthSpeedMultiplier = 1f;
+        if (spriteRenderer != null)
+        {
+            spriteRenderer.color = fullColor;
+        }
+
+        if (revealMode == RevealMode.ScaleFromRoot && revealTarget != null)
+        {
+            revealTarget.localScale = fullLocalScale;
+            revealTarget.localPosition = fullLocalPosition;
+        }
+        ApplyRevealVisual();
+        ClearProtectedFromPruning();
+        SetPruneColliderEnabled(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (revealMaterial != null)
+        {
+            Destroy(revealMaterial);
+        }
+    }
+
+    public void Prune()
+    {
+        PruneWithFade(0.5f);
+    }
+
+    public void PruneWithFade(float fadeDuration)
+    {
+        if (!CanBePruned)
+        {
+            return;
+        }
+
+        AuthoredTreeController controller = GetComponentInParent<AuthoredTreeController>();
+        AuthoredTreeSegment[] fadeTargets = CollectPruneTargets(controller);
+        bool invokePruneCompleted = true;
+        for (int i = 0; i < fadeTargets.Length; i++)
+        {
+            if (!fadeTargets[i].gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            fadeTargets[i].BeginPruneFade(fadeDuration, invokePruneCompleted);
+            invokePruneCompleted = false;
+        }
+    }
+
+    private AuthoredTreeSegment[] CollectPruneTargets(AuthoredTreeController controller)
+    {
+        if (controller == null)
+        {
+            return new[] { this };
+        }
+
+        AuthoredTreeSegment[] allSegments = controller.GetComponentsInChildren<AuthoredTreeSegment>(true);
+        int count = 0;
+        for (int i = 0; i < allSegments.Length; i++)
+        {
+            AuthoredTreeSegment segment = allSegments[i];
+            if (!segment.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (segment == this || segment.IsDescendantOf(this))
+            {
+                count++;
+            }
+        }
+
+        AuthoredTreeSegment[] targets = new AuthoredTreeSegment[count];
+        int index = 0;
+        for (int i = 0; i < allSegments.Length; i++)
+        {
+            AuthoredTreeSegment segment = allSegments[i];
+            if (!segment.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (segment == this || segment.IsDescendantOf(this))
+            {
+                targets[index++] = segment;
+            }
+        }
+
+        return targets;
+    }
+
+    private void BeginPruneFade(float fadeDuration, bool invokePruneCompleted)
+    {
+        if (state == SegmentState.Pruning || !gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        state = SegmentState.Pruning;
+        occupiesBranchSlot = false;
+        wasPruned = true;
+        SetPruneColliderEnabled(false);
+        StartCoroutine(PruneFadeRoutine(fadeDuration, invokePruneCompleted));
+    }
+
+    private System.Collections.IEnumerator PruneFadeRoutine(float fadeDuration, bool invokePruneCompleted)
+    {
+        float elapsed = 0f;
+        float startAlpha = fullColor.a;
+
+        while (elapsed < fadeDuration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(startAlpha, 0f, elapsed / fadeDuration);
+            SetVisualAlpha(alpha);
+            yield return null;
+        }
+
+        SetVisualAlpha(0f);
+        gameObject.SetActive(false);
+        state = SegmentState.Locked;
+
+        if (invokePruneCompleted)
+        {
+            PruneCompleted?.Invoke(this);
+        }
+    }
+
+    private void SetVisualAlpha(float alpha)
+    {
+        if (spriteRenderer == null)
+        {
+            return;
+        }
+
+        Color color = fullColor;
+        color.a = alpha;
+        spriteRenderer.color = color;
+    }
+
+    public bool IsDescendantOf(AuthoredTreeSegment ancestor)
+    {
+        AuthoredTreeSegment current = parentSegment;
+        while (current != null)
+        {
+            if (current == ancestor)
+            {
+                return true;
+            }
+
+            current = current.ParentSegment;
+        }
+
+        return false;
+    }
+
+    private void ApplyRevealVisual()
+    {
+        switch (revealMode)
+        {
+            case RevealMode.ClipFromBottom:
+            case RevealMode.ClipFromLeft:
+            case RevealMode.ClipFromRight:
+            case RevealMode.ClipFromTop:
+                if (Application.isPlaying)
+                {
+                    EnsureRevealMaterial();
+                }
+
+                if (revealMaterial != null)
+                {
+                    revealMaterial.SetFloat(RevealProgressId, revealProgress);
+                }
+                break;
+
+            case RevealMode.ScaleFromRoot:
+                float scaleY = Mathf.Max(0.001f, fullLocalScale.y * revealProgress);
+                revealTarget.localScale = new Vector3(fullLocalScale.x, scaleY, fullLocalScale.z);
+
+                if (useBottomAnchoredReveal)
+                {
+                    float anchoredY = fullLocalPosition.y + (spriteHalfHeight * (scaleY - 1f));
+                    revealTarget.localPosition = new Vector3(fullLocalPosition.x, anchoredY, fullLocalPosition.z);
+                }
+                break;
+
+            case RevealMode.Fade:
+                if (spriteRenderer != null)
+                {
+                    Color color = fullColor;
+                    color.a = fullColor.a * revealProgress;
+                    spriteRenderer.color = color;
+                }
+                break;
+        }
+    }
+
+    private bool IsPruneColliderTouchingStar(Vector3 starWorldPosition, float starRadius, Collider2D starCollider)
+    {
+        if (pruneCollider == null || !pruneCollider.enabled)
+        {
+            return false;
+        }
+
+        Vector2 closestOnBranch = pruneCollider.ClosestPoint(starWorldPosition);
+        if (Vector2.Distance(closestOnBranch, starWorldPosition) <= starRadius)
+        {
+            return true;
+        }
+
+        if (starCollider == null || !starCollider.enabled)
+        {
+            return false;
+        }
+
+        ColliderDistance2D distance = Physics2D.Distance(starCollider, pruneCollider);
+        return distance.isOverlapped;
+    }
+
+    private bool IsWorldPointInRevealedRegion(Vector3 worldPoint)
+    {
+        if (spriteRenderer == null || spriteRenderer.sprite == null)
+        {
+            return revealProgress > 0f;
+        }
+
+        if (UsesClipReveal())
+        {
+            Vector3 rendererLocal = spriteRenderer.transform.InverseTransformPoint(worldPoint);
+            switch (revealMode)
+            {
+                case RevealMode.ClipFromLeft:
+                {
+                    float revealFrontX = Mathf.Lerp(spriteRevealLeft, spriteRevealRight, revealProgress);
+                    return rendererLocal.x <= revealFrontX + 0.02f;
+                }
+
+                case RevealMode.ClipFromRight:
+                {
+                    float revealFrontX = Mathf.Lerp(spriteRevealRight, spriteRevealLeft, revealProgress);
+                    return rendererLocal.x >= revealFrontX - 0.02f;
+                }
+
+
+                case RevealMode.ClipFromTop:
+                {
+                    float revealFrontY = Mathf.Lerp(spriteRevealTop, spriteRevealBottom, revealProgress);
+                    return rendererLocal.y >= revealFrontY - 0.02f;
+                }
+
+                default:
+                {
+                    float revealFrontY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, revealProgress);
+                    return rendererLocal.y <= revealFrontY + 0.02f;
+                }
+            }
+        }
+
+        if (revealMode == RevealMode.ScaleFromRoot)
+        {
+            return revealProgress + 0.001f >= GetRevealProgressForWorldPoint(worldPoint);
+        }
+
+        return revealProgress >= 1f;
+    }
+
+    private void SetPruneColliderEnabled(bool enabled)
+    {
+        if (pruneCollider != null)
+        {
+            pruneCollider.enabled = enabled && canBePruned;
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (trigger != null)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(trigger.WorldPosition, triggerDistance);
+        }
+
+        Gizmos.color = Color.green;
+        Gizmos.DrawWireSphere(TipWorldPosition, 0.05f);
+        Gizmos.DrawLine(transform.position, TipWorldPosition);
+    }
+}
