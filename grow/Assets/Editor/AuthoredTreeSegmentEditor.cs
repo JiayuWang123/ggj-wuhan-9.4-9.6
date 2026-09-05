@@ -428,4 +428,60 @@ public static class AuthoredColliderUtility
         serializedSegment.ApplyModifiedProperties();
     }
 }
+
+public static class StarMarkerBuilder
+{
+    private const string StarSpritePath = "Assets/Art/UI/Star.png";
+
+    [MenuItem("Tools/GGJ/Add Three Star Markers To Authored Tree")]
+    private static void AddThreeStarMarkers()
+    {
+        AuthoredTreeController tree = Object.FindObjectOfType<AuthoredTreeController>();
+        if (tree == null)
+        {
+            EditorUtility.DisplayDialog("Authored Tree", "场景中找不到 AuthoredTreeController。", "OK");
+            return;
+        }
+
+        Transform root = tree.transform;
+        EnsureStarProtectionSystem(tree.gameObject);
+
+        CreateStarMarker(root, "Star1", new Vector3(0.8f, 0.4f, 0f));
+        CreateStarMarker(root, "Star2", new Vector3(-0.9f, 1.2f, 0f));
+        CreateStarMarker(root, "Star3", new Vector3(1.4f, 2.0f, 0f));
+
+        EditorUtility.SetDirty(tree.gameObject);
+        UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
+            UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
+    }
+
+    private static void EnsureStarProtectionSystem(GameObject treeRoot)
+    {
+        if (treeRoot.GetComponent<StarProtectionSystem>() == null)
+        {
+            Undo.AddComponent<StarProtectionSystem>(treeRoot);
+        }
+    }
+
+    private static void CreateStarMarker(Transform parent, string name, Vector3 localPosition)
+    {
+        Transform existing = parent.Find(name);
+        if (existing != null)
+        {
+            return;
+        }
+
+        GameObject starGo = new GameObject(name);
+        Undo.RegisterCreatedObjectUndo(starGo, "Create Star Marker");
+        starGo.transform.SetParent(parent, false);
+        starGo.transform.localPosition = localPosition;
+        starGo.transform.localScale = Vector3.one * 0.35f;
+
+        SpriteRenderer renderer = Undo.AddComponent<SpriteRenderer>(starGo);
+        renderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(StarSpritePath);
+        renderer.sortingOrder = 20;
+
+        Undo.AddComponent<StarProtectionMarker>(starGo);
+    }
+}
 #endif

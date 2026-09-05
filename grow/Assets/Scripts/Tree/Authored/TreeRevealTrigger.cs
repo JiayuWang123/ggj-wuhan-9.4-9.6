@@ -10,6 +10,7 @@ public class TreeRevealTrigger : MonoBehaviour
     [SerializeField] private float gizmoRadius = 0.12f;
 
     public Vector3 WorldPosition => transform.position;
+    public float TouchRadius => gizmoRadius;
     public AuthoredTreeSegment OwnerSegment => ownerSegment;
 
     private void OnDrawGizmos()

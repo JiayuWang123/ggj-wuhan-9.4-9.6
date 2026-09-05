@@ -55,18 +55,24 @@ public class AuthoredTreeSegment : MonoBehaviour
     private float growthSpeedMultiplier = 1f;
     private bool occupiesBranchSlot;
     private bool wasPruned;
+    private bool protectedFromPruning;
+    private bool defaultCanBePruned = true;
 
     private static readonly int RevealProgressId = Shader.PropertyToID("_RevealProgress");
     private static readonly int RevealBottomId = Shader.PropertyToID("_RevealBottom");
     private static readonly int RevealTopId = Shader.PropertyToID("_RevealTop");
 
     public AuthoredTreeSegment ParentSegment => parentSegment;
+    public TreeRevealTrigger BranchTrigger => trigger;
+    public float BranchTriggerDistance => triggerDistance;
     public SegmentState State => state;
     public float RevealProgress => revealProgress;
-    public bool CanBePruned => canBePruned && (state == SegmentState.Revealing || state == SegmentState.Complete);
+    public bool CanBePruned => canBePruned && !protectedFromPruning && (state == SegmentState.Revealing || state == SegmentState.Complete);
+    public bool IsProtectedFromPruning => protectedFromPruning;
     public bool IsPruning => state == SegmentState.Pruning;
     public bool OccupiesBranchSlot => occupiesBranchSlot;
     public bool WasPruned => wasPruned;
+    public Collider2D PruneCollider => pruneCollider;
     public Vector3 TipWorldPosition => transform.TransformPoint(GetLocalTip());
 
     public event Action<AuthoredTreeSegment> RevealStarted;
@@ -78,8 +84,50 @@ public class AuthoredTreeSegment : MonoBehaviour
         growthSpeedMultiplier = Mathf.Clamp01(multiplier);
     }
 
+    public void SetProtectedFromPruning(bool value)
+    {
+        protectedFromPruning = value;
+        if (value)
+        {
+            canBePruned = false;
+            SetPruneColliderEnabled(false);
+        }
+    }
+
+    public void LockPruningByStar()
+    {
+        protectedFromPruning = true;
+        canBePruned = false;
+        SetPruneColliderEnabled(false);
+    }
+
+    public void ClearProtectedFromPruning()
+    {
+        protectedFromPruning = false;
+        canBePruned = defaultCanBePruned;
+        if (state == SegmentState.Revealing || state == SegmentState.Complete)
+        {
+            SetPruneColliderEnabled(true);
+        }
+        else
+        {
+            SetPruneColliderEnabled(false);
+        }
+    }
+
+    public static void ProtectBranchChainToRoot(AuthoredTreeSegment segment)
+    {
+        AuthoredTreeSegment current = segment;
+        while (current != null)
+        {
+            current.LockPruningByStar();
+            current = current.ParentSegment;
+        }
+    }
+
     private void Awake()
     {
+        defaultCanBePruned = canBePruned;
         CacheVisualReferences();
     }
 
@@ -170,13 +218,22 @@ public class AuthoredTreeSegment : MonoBehaviour
         revealMaterial.SetFloat(RevealTopId, spriteRevealTop);
     }
 
+    private float GetRevealContactProgress()
+    {
+        return state == SegmentState.Locked ? 0f : revealProgress;
+    }
+
     private Vector3 GetLocalTip()
+    {
+        return GetLocalTipAtProgress(GetRevealContactProgress());
+    }
+
+    private Vector3 GetLocalTipAtProgress(float progress)
     {
         if (spriteRenderer != null && spriteRenderer.sprite != null)
         {
             if (revealMode == RevealMode.ClipFromBottom)
             {
-                float progress = state == SegmentState.Locked ? 0f : revealProgress;
                 float tipY = Mathf.Lerp(spriteRevealBottom, spriteRevealTop, progress);
                 Vector3 tipInRendererLocal = new Vector3(spriteRevealCenterX, tipY, 0f);
                 return transform.InverseTransformPoint(spriteRenderer.transform.TransformPoint(tipInRendererLocal));
@@ -338,6 +395,7 @@ public class AuthoredTreeSegment : MonoBehaviour
             revealTarget.localPosition = fullLocalPosition;
         }
         ApplyRevealVisual();
+        ClearProtectedFromPruning();
         SetPruneColliderEnabled(false);
     }
 
@@ -356,7 +414,7 @@ public class AuthoredTreeSegment : MonoBehaviour
 
     public void PruneWithFade(float fadeDuration)
     {
-        if (!CanBePruned && state != SegmentState.Complete)
+        if (!CanBePruned)
         {
             return;
         }

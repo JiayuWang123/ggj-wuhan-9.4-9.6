@@ -14,11 +14,13 @@ public class AuthoredTreeController : MonoBehaviour
 
     private BranchNutrientBudget nutrientBudget;
     private BranchRevealSequence revealSequence;
+    private StarProtectionSystem starProtection;
 
     private void Awake()
     {
         nutrientBudget = GetComponent<BranchNutrientBudget>();
         revealSequence = GetComponent<BranchRevealSequence>();
+        starProtection = GetComponent<StarProtectionSystem>();
 
         if (collectSegmentsFromChildren)
         {
@@ -134,6 +136,7 @@ public class AuthoredTreeController : MonoBehaviour
         }
 
         nutrientBudget?.ResetNutrients();
+        starProtection?.ResetProtectionState();
 
         if (autoStartOnPlay)
         {
