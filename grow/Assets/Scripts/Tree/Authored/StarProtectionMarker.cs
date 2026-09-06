@@ -90,6 +90,11 @@ public class StarProtectionMarker : MonoBehaviour
     public void MarkCollected()
     {
         IsCollected = true;
+
+        StarCollectSfx collectSfx = GetComponent<StarCollectSfx>();
+        if (collectSfx != null)
+            collectSfx.Play();
+
         gameObject.SetActive(false);
     }
 

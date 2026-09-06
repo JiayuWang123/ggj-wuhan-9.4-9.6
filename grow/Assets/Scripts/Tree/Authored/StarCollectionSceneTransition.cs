@@ -8,7 +8,8 @@ public class StarCollectionSceneTransition : MonoBehaviour
 {
     [SerializeField] private StarProtectionSystem starProtection;
     [SerializeField] private string nextSceneName = "";
-    [SerializeField] private float transitionDelaySeconds = 0.5f;
+    [Tooltip("收齐星星后，等待多少秒再切到下一关。")]
+    [SerializeField] [Min(0f)] private float transitionDelaySeconds = 2f;
 
     private bool transitionTriggered;
 
