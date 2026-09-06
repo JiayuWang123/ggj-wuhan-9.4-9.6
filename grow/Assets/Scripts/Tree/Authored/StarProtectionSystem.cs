@@ -146,6 +146,11 @@ public class StarProtectionSystem : MonoBehaviour
                     continue;
                 }
 
+                if (!star.AllowsCollectingSegment(segment))
+                {
+                    continue;
+                }
+
                 Collider2D branchCollider = segment.PruneCollider;
                 if (branchCollider == null || !branchCollider.enabled)
                 {

@@ -10,6 +10,7 @@ public class StarProtectionMarker : MonoBehaviour
 {
     [SerializeField] private float activationRadius = 0.35f;
     [SerializeField] private int nutrientBonusOnCollect = 0;
+    [SerializeField] private AuthoredTreeSegment[] requiredTouchingSegments;
     [SerializeField] private Color gizmoColor = new Color(1f, 0.92f, 0.2f, 0.95f);
 
     private CircleCollider2D contactCollider;
@@ -17,6 +18,24 @@ public class StarProtectionMarker : MonoBehaviour
     public bool IsCollected { get; private set; }
     public float ActivationRadius => activationRadius;
     public int NutrientBonusOnCollect => nutrientBonusOnCollect;
+
+    public bool AllowsCollectingSegment(AuthoredTreeSegment segment)
+    {
+        if (requiredTouchingSegments == null || requiredTouchingSegments.Length == 0)
+        {
+            return true;
+        }
+
+        for (int i = 0; i < requiredTouchingSegments.Length; i++)
+        {
+            if (requiredTouchingSegments[i] == segment)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
     public Collider2D ContactCollider
     {
         get

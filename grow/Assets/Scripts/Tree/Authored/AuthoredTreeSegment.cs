@@ -99,17 +99,24 @@ public class AuthoredTreeSegment : MonoBehaviour
             return false;
         }
 
-        if (state == SegmentState.Complete)
-        {
-            return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
-        }
-
-        if (revealProgress <= 0.001f || !IsWorldPointInRevealedRegion(starWorldPosition))
+        if (!IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider))
         {
             return false;
         }
 
-        return IsPruneColliderTouchingStar(starWorldPosition, starRadius, starCollider);
+        if (state == SegmentState.Complete)
+        {
+            return true;
+        }
+
+        if (revealProgress <= 0.001f)
+        {
+            return false;
+        }
+
+        Vector2 closestOnBranch = pruneCollider.ClosestPoint(starWorldPosition);
+        float requiredProgress = GetRevealProgressForWorldPoint(closestOnBranch);
+        return revealProgress + 0.02f >= requiredProgress;
     }
 
     public event Action<AuthoredTreeSegment> RevealStarted;
